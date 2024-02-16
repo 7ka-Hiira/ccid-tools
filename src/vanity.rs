@@ -29,7 +29,7 @@ pub fn find_ccid_from_mnemonic(matchmethod: MatchMethod) {
         }
 
         println!(
-            "Mnemonic: {}\nAddress: {:?}",
+            "Mnemonic(en): {}\nAddress: {}\n",
             mnemonic.to_phrase(),
             addr.to_string().replace("0x", "CC")
         );
