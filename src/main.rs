@@ -66,11 +66,11 @@ fn main() {
                 }
                 method.contains = Some(text.to_uppercase());
             }
-            let mut threads_num = threads.unwrap_or(num_cpus::get()) - 1;
+            let mut threads_num = threads.unwrap_or(num_cpus::get());
             if threads_num <= 0 {
-                threads_num = num_cpus::get() - 1;
+                threads_num = num_cpus::get();
             }
-            for _ in 0..threads_num {
+            for _ in 0..threads_num - 1 {
                 let m = method.clone();
                 thread::spawn(move || {
                     find_ccid_from_mnemonic(m);
