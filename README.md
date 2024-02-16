@@ -18,11 +18,11 @@ $ ./ccid-tools <subcommand> <options>
 ## Usage
 
 ### Vanity key generation
-You'll get Mnemonics and Addresses.
+You'll get Mnemonics and Addresses
 
 Examples
 
-- Generate CCID start with CC1234
+- Generate CCID starts with CC1234
 ```
 $ ccid-tools vanity --start-with cc1234
 ```
@@ -32,14 +32,14 @@ $ ccid-tools vanity --start-with cc1234
 $ ccid-tools vanity --contains abcd -j 3
 ```
 
-- Generate CCID where the 10 characters following the CC and the last 10 characters are numbers.
+- Generate CCID where the 10 characters following the CC and the last 10 characters are numbers
 ```
 $ ccid-tools vanity --regex "^CC\d{10}.*\d{10}$"
 ```
 
 ## Contributing
 
-New features, bug reports/fixes, and improvements to this terrible code are welcome.
+New features, bug reports/fixes, and improvements to this terrible code are welcome:)
 
 ## License
 

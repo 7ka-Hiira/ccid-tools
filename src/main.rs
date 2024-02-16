@@ -54,7 +54,7 @@ fn main() {
             };
             if let Some(text) = method.start_with {
                 if !text.to_uppercase().starts_with("CC") {
-                    panic!("CCID must start with 'CC'")
+                    panic!("CCID must starts with 'CC'")
                 }
                 if !text.to_uppercase().chars().all(|c| c.is_ascii_hexdigit()) {
                     panic!("CCID must be a HEX (0-9, A-F) string")
