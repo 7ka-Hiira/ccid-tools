@@ -1,0 +1,78 @@
+name: Deploy
+
+on:
+  push:
+    tags: 
+      - v*
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: Release - ${{ matrix.platform.release_for }}
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - release_for: Linux-x86_64-gnu
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            ext: ""
+            command: build
+
+          - release_for: Linux-aarch64-gnu
+            os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            ext: ""
+            command: build
+            
+          - release_for: FreeBSD-x86_64
+            os: ubuntu-latest
+            target: x86_64-unknown-freebsd
+            ext: ""
+            command: build
+
+          - release_for: Windows-x86_64
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+            ext: .exe
+            command: build
+
+          - release_for: macOS-x86_64
+            os: macOS-latest
+            target: x86_64-apple-darwin
+            ext: ""
+            command: build
+
+          - release_for: macOS-aarch64
+            os: macOS-latest
+            target: aarch64-apple-darwin
+            ext: ""
+            command: build
+
+    runs-on: ${{ matrix.platform.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Build
+        uses: houseabsolute/actions-rust-cross@v0
+        with:
+          command: ${{ matrix.platform.command }}
+          target: ${{ matrix.platform.target }}
+          args: "--locked --release"
+          strip: true
+      - name: Publish release artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: ccid-tools_${{ matrix.platform.release_for }}
+          path: target/${{ matrix.platform.target }}/release/ccid-tools${{ matrix.platform.ext }}
+      - name: Rename executable file
+        run: mv target/${{ matrix.platform.target }}/release/ccid-tools${{ matrix.platform.ext }} ccid-tools_${{ matrix.platform.release_for }}${{ matrix.platform.ext }}
+      - name: Generate SHA-256
+        run: shasum -a 256 ccid-tools_${{ matrix.platform.release_for }}${{ matrix.platform.ext }}
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v1
+        with:
+          draft: true
+          files: "ccid-tools_${{ matrix.platform.release_for }}${{ matrix.platform.ext }}"
