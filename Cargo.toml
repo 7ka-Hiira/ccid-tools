@@ -1,0 +1,16 @@
+[package]
+name = "cctools"
+version = "0.1.0"
+edition = "2021"
+description = "Tools for working with CCID"
+license = "Apache-2.0"
+authors = ["Nanaka Hiira"]
+
+[dependencies]
+alloy-signer = { git = "https://github.com/alloy-rs/alloy", features = ["mnemonic"]}
+clap = { version = "4.5.0", features = ["derive"] }
+coins-bip32 = "0.8.7"
+coins-bip39 = "0.8.7"
+num_cpus = "1.16.0"
+rand = "0.8.5"
+regex = "1.10.3"
