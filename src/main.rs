@@ -1,7 +1,7 @@
 use clap::{Parser, Subcommand};
 use coins_bip32::ecdsa::SigningKey;
 use coins_bip39::{mnemonic::Mnemonic, English};
-use std::{str::FromStr, thread};
+use std::{str::FromStr, fmt::Write, thread};
 
 pub mod utils;
 mod vanity;
@@ -69,9 +69,11 @@ fn main() {
             let privkey = mnemonic2privkey(&mnemonic)
                 .to_bytes()
                 .to_vec()
-                .into_iter()
-                .map(|b| format!("{:02x}", b))
-                .collect::<String>();
+                .iter()
+                .fold(String::new(), |mut output, b| {
+                    let _ = write!(output, "{b:02x}");
+                    output
+                });
             let ccid = mnemonic2addr(&mnemonic).to_string().replace("0x", "CC");
             println!(
                 "Mnemonic: {}\nPrivateKey: {}\nAddress: {}",
@@ -104,7 +106,7 @@ fn main() {
                 method.contains = Some(text.to_uppercase());
             }
             let mut threads_num = threads.unwrap_or(num_cpus::get());
-            if threads_num <= 0 {
+            if threads_num == 0 {
                 threads_num = num_cpus::get();
             }
             for _ in 0..threads_num - 1 {
@@ -124,10 +126,11 @@ fn main() {
             let mnemonic: Mnemonic<English> = Mnemonic::from_str(&mnemonic).unwrap();
             let privkey = utils::mnemonic2privkey(&mnemonic)
                 .to_bytes()
-                .to_vec()
-                .into_iter()
-                .map(|b| format!("{:02x}", b))
-                .collect::<String>();
+                .iter()
+                .fold(String::new(), |mut output, b| {
+                    let _ = write!(output, "{:02x}", b);
+                    output
+                });
             println!("PrivateKey: {:?}", privkey);
         }
         SubCommand::Privkey2ccid { privkey } => {
