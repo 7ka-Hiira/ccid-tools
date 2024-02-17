@@ -1,6 +1,8 @@
-# [WIP] CCID Tools
+# CCID Tools
 
-Tools for working with CCID (used in https://github.com/totegamma/concurrent)
+Tools for working with CCID (used in [concurrent](https://github.com/totegamma/concurrent))
+
+Currently supports only English mnemonics
 
 ## Installation
 
@@ -8,6 +10,7 @@ Tools for working with CCID (used in https://github.com/totegamma/concurrent)
 2. Grant Permission (Linux)
 ```
 $ cd /path/to/your/download/directory
+$ mv <downloaded filename> ccid-tools
 $ chmod +x ./ccid-tools
 ```
 3. Run
@@ -17,6 +20,11 @@ $ ./ccid-tools <subcommand> <options>
 
 ## Usage
 
+### Generate a entity
+```
+$ ./ccidd-tools generate
+```
+
 ### Vanity key generation
 You'll get Mnemonics and Addresses
 
@@ -24,17 +32,30 @@ Examples
 
 - Generate CCID starts with CC1234
 ```
-$ ccid-tools vanity --start-with cc1234
+$ ./ccid-tools vanity --start-with cc1234
 ```
 
 - Generate CCID containing abcd with 3 threads
 ```
-$ ccid-tools vanity --contains abcd -j 3
+$ ./ccid-tools vanity --contains abcd -j 3
 ```
 
 - Generate CCID where the 10 characters following the CC and the last 10 characters are numbers
 ```
-$ ccid-tools vanity --regex "^CC\d{10}.*\d{10}$"
+$ ./ccid-tools vanity --regex "^CC\d{10}.*\d{10}$"
+```
+
+### Key derivation
+
+Examples
+
+- Derive privatekey from mnemonics
+```
+$ ./ccid-tools phrase2privkey "return velvet service basket ..."
+```
+- Derive CCID from privatekey
+```
+$ ./ccid-tools privkey2ccid "bcb7710a8cb369bc695e7e200611d501b..."
 ```
 
 ## Contributing
