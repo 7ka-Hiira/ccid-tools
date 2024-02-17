@@ -422,10 +422,12 @@ dependencies = [
 name = "ccid-tools"
 version = "0.1.0"
 dependencies = [
+ "alloy-primitives",
  "alloy-signer",
  "clap",
  "coins-bip32",
  "coins-bip39",
+ "hex",
  "num_cpus",
  "rand",
  "regex",

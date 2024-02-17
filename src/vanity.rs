@@ -1,11 +1,8 @@
-use crate::MatchMethod;
-use alloy_signer::coins_bip39::wordlist::English;
-use alloy_signer::coins_bip39::Mnemonic;
-use alloy_signer::k256::ecdsa::SigningKey;
-use alloy_signer::utils::secret_key_to_address;
+use coins_bip39::{wordlist::English, Mnemonic};
 use regex::Regex;
 
-const DEFAULT_DERIVATION_PATH: &str = "m/44'/60'/0'/0/0";
+use crate::utils::mnemonic2addr;
+use crate::MatchMethod;
 
 pub fn find_ccid_from_mnemonic(matchmethod: MatchMethod) {
     let mut rng = rand::thread_rng();
@@ -16,9 +13,7 @@ pub fn find_ccid_from_mnemonic(matchmethod: MatchMethod) {
     };
     loop {
         let mnemonic: Mnemonic<English> = Mnemonic::new(&mut rng);
-        let priv_key = mnemonic.derive_key(DEFAULT_DERIVATION_PATH, None).unwrap();
-        let key: &coins_bip32::prelude::SigningKey = priv_key.as_ref();
-        let addr = secret_key_to_address(&SigningKey::from_bytes(&key.to_bytes()).unwrap());
+        let addr = mnemonic2addr(&mnemonic);
 
         if !match_check(
             &matchmethod,
@@ -29,7 +24,7 @@ pub fn find_ccid_from_mnemonic(matchmethod: MatchMethod) {
         }
 
         println!(
-            "Mnemonic(en): {}\nAddress: {}\n",
+            "Mnemonic: {}\nAddress: {}\n",
             mnemonic.to_phrase(),
             addr.to_string().replace("0x", "CC")
         );

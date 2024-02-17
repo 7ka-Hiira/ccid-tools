@@ -1,7 +1,11 @@
 use clap::{Parser, Subcommand};
-use std::thread;
+use coins_bip32::ecdsa::SigningKey;
+use coins_bip39::{mnemonic::Mnemonic, English};
+use std::{str::FromStr, thread};
 
+pub mod utils;
 mod vanity;
+use utils::{mnemonic2addr, mnemonic2privkey};
 use vanity::find_ccid_from_mnemonic;
 
 #[derive(Parser)]
@@ -31,6 +35,7 @@ struct MatchMethod {
 
 #[derive(Subcommand)]
 enum SubCommand {
+    Generate {},
     Vanity {
         #[clap(flatten)]
         match_method: MatchMethod,
@@ -38,11 +43,43 @@ enum SubCommand {
         #[clap(short = 'j', long, value_name = "THREAD_NUM")]
         threads: Option<usize>,
     },
+    Phrase2ccid {
+        /// Mnemonic phrase
+        mnemonic: String,
+    },
+    Phrase2privkey {
+        /// Mnemonic phrase
+        mnemonic: String,
+    },
+    Privkey2ccid {
+        /// Private key
+        privkey: String,
+    },
+    Pubkey2ccid {
+        /// Public key
+        pubkey: String,
+    },
 }
 
 fn main() {
     let args: Arg = Arg::parse();
     match args.subcommand {
+        SubCommand::Generate {} => {
+            let mnemonic: Mnemonic<English> = Mnemonic::new(&mut rand::thread_rng());
+            let privkey = mnemonic2privkey(&mnemonic)
+                .to_bytes()
+                .to_vec()
+                .into_iter()
+                .map(|b| format!("{:02x}", b))
+                .collect::<String>();
+            let ccid = mnemonic2addr(&mnemonic).to_string().replace("0x", "CC");
+            println!(
+                "Mnemonic: {}\nPrivateKey: {}\nAddress: {}",
+                mnemonic.to_phrase(),
+                privkey,
+                ccid
+            );
+        }
         SubCommand::Vanity {
             match_method,
             threads,
@@ -77,6 +114,36 @@ fn main() {
                 });
             }
             find_ccid_from_mnemonic(method);
+        }
+        SubCommand::Phrase2ccid { mnemonic } => {
+            let mnemonic: Mnemonic<English> = Mnemonic::from_str(&mnemonic).unwrap();
+            let ccid = mnemonic2addr(&mnemonic).to_string().replace("0x", "CC");
+            println!("Address: {}", ccid);
+        }
+        SubCommand::Phrase2privkey { mnemonic } => {
+            let mnemonic: Mnemonic<English> = Mnemonic::from_str(&mnemonic).unwrap();
+            let privkey = utils::mnemonic2privkey(&mnemonic)
+                .to_bytes()
+                .to_vec()
+                .into_iter()
+                .map(|b| format!("{:02x}", b))
+                .collect::<String>();
+            println!("PrivateKey: {:?}", privkey);
+        }
+        SubCommand::Privkey2ccid { privkey } => {
+            let key = SigningKey::from_slice(&hex::decode(privkey).unwrap()).unwrap();
+            let addr = alloy_signer::utils::secret_key_to_address(&key);
+            let ccaddr = addr.to_string().replace("0x", "CC");
+            println!("Address: {}", ccaddr);
+        }
+        SubCommand::Pubkey2ccid { pubkey } => {
+            let key = alloy_signer::k256::ecdsa::VerifyingKey::from_sec1_bytes(
+                &hex::decode(pubkey).unwrap(),
+            )
+            .unwrap();
+            let addr = alloy_primitives::Address::from_public_key(&key);
+            let ccaddr = addr.to_string().replace("0x", "CC");
+            println!("Address: {}", ccaddr);
         }
     }
 }
