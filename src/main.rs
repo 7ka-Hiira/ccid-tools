@@ -1,11 +1,11 @@
 use clap::{Parser, Subcommand};
 use coins_bip32::ecdsa::SigningKey;
 use coins_bip39::{mnemonic::Mnemonic, English};
-use std::{str::FromStr, fmt::Write, thread};
+use std::{fmt::Write, str::FromStr, thread};
 
 pub mod utils;
 mod vanity;
-use utils::{mnemonic2addr, mnemonic2privkey};
+use utils::*;
 use vanity::find_ccid_from_mnemonic;
 
 #[derive(Parser)]
@@ -66,14 +66,13 @@ fn main() {
     match args.subcommand {
         SubCommand::Generate {} => {
             let mnemonic: Mnemonic<English> = Mnemonic::new(&mut rand::thread_rng());
-            let privkey = mnemonic2privkey(&mnemonic)
-                .to_bytes()
-                .to_vec()
-                .iter()
-                .fold(String::new(), |mut output, b| {
+            let privkey = mnemonic2privkey(&mnemonic).to_bytes().to_vec().iter().fold(
+                String::new(),
+                |mut output, b| {
                     let _ = write!(output, "{b:02x}");
                     output
-                });
+                },
+            );
             let ccid = mnemonic2addr(&mnemonic).to_string().replace("0x", "CC");
             println!(
                 "Mnemonic: {}\nPrivateKey: {}\nAddress: {}",
@@ -124,27 +123,23 @@ fn main() {
         }
         SubCommand::Phrase2privkey { mnemonic } => {
             let mnemonic: Mnemonic<English> = Mnemonic::from_str(&mnemonic).unwrap();
-            let privkey = utils::mnemonic2privkey(&mnemonic)
-                .to_bytes()
-                .iter()
-                .fold(String::new(), |mut output, b| {
+            let privkey = utils::mnemonic2privkey(&mnemonic).to_bytes().iter().fold(
+                String::new(),
+                |mut output, b| {
                     let _ = write!(output, "{:02x}", b);
                     output
-                });
-            println!("PrivateKey: {:?}", privkey);
+                },
+            );
+            println!("PrivateKey: {}", privkey);
         }
         SubCommand::Privkey2ccid { privkey } => {
-            let key = SigningKey::from_slice(&hex::decode(privkey).unwrap()).unwrap();
-            let addr = alloy_signer::utils::secret_key_to_address(&key);
+            let key = SigningKey::from_slice(&hex_decode(&privkey)).unwrap();
+            let addr = privkey2addr(key);
             let ccaddr = addr.to_string().replace("0x", "CC");
             println!("Address: {}", ccaddr);
         }
         SubCommand::Pubkey2ccid { pubkey } => {
-            let key = alloy_signer::k256::ecdsa::VerifyingKey::from_sec1_bytes(
-                &hex::decode(pubkey).unwrap(),
-            )
-            .unwrap();
-            let addr = alloy_primitives::Address::from_public_key(&key);
+            let addr = utils::pubkey2addr(&hex_decode(&pubkey));
             let ccaddr = addr.to_string().replace("0x", "CC");
             println!("Address: {}", ccaddr);
         }
