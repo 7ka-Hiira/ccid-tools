@@ -1,7 +1,7 @@
 use clap::{Parser, Subcommand};
 use coins_bip32::ecdsa::SigningKey;
 use coins_bip39::{mnemonic::Mnemonic, English};
-use std::{fmt::Write, str::FromStr, thread};
+use std::{str::FromStr, thread};
 
 pub mod utils;
 mod vanity;
@@ -51,7 +51,15 @@ enum SubCommand {
         /// Mnemonic phrase
         mnemonic: String,
     },
+    Phrase2pubkey {
+        /// Mnemonic phrase
+        mnemonic: String,
+    },
     Privkey2ccid {
+        /// Private key
+        privkey: String,
+    },
+    Privkey2pubkey {
         /// Private key
         privkey: String,
     },
@@ -66,13 +74,7 @@ fn main() {
     match args.subcommand {
         SubCommand::Generate {} => {
             let mnemonic: Mnemonic<English> = Mnemonic::new(&mut rand::thread_rng());
-            let privkey = mnemonic2privkey(&mnemonic).to_bytes().to_vec().iter().fold(
-                String::new(),
-                |mut output, b| {
-                    let _ = write!(output, "{b:02x}");
-                    output
-                },
-            );
+            let privkey = hex_encode(mnemonic2privkey(&mnemonic).to_bytes().to_vec().as_ref());
             let ccid = mnemonic2addr(&mnemonic).to_string().replace("0x", "CC");
             println!(
                 "Mnemonic: {}\nPrivateKey: {}\nAddress: {}",
@@ -123,14 +125,14 @@ fn main() {
         }
         SubCommand::Phrase2privkey { mnemonic } => {
             let mnemonic: Mnemonic<English> = Mnemonic::from_str(&mnemonic).unwrap();
-            let privkey = utils::mnemonic2privkey(&mnemonic).to_bytes().iter().fold(
-                String::new(),
-                |mut output, b| {
-                    let _ = write!(output, "{:02x}", b);
-                    output
-                },
-            );
+            let privkey = hex_encode(mnemonic2privkey(&mnemonic).to_bytes().as_ref());
             println!("PrivateKey: {}", privkey);
+        }
+        SubCommand::Phrase2pubkey { mnemonic } => {
+            let mnemonic: Mnemonic<English> = Mnemonic::from_str(&mnemonic).unwrap();
+            let privkey = mnemonic2privkey(&mnemonic);
+            let pubkey = privkey2pubkey(privkey);
+            println!("PublicKey: {}", hex_encode(&pubkey));
         }
         SubCommand::Privkey2ccid { privkey } => {
             let key = SigningKey::from_slice(&hex_decode(&privkey)).unwrap();
@@ -138,8 +140,13 @@ fn main() {
             let ccaddr = addr.to_string().replace("0x", "CC");
             println!("Address: {}", ccaddr);
         }
+        SubCommand::Privkey2pubkey { privkey } => {
+            let key = SigningKey::from_slice(&hex_decode(&privkey)).unwrap();
+            let pubkey = privkey2pubkey(key);
+            println!("PublicKey: {}", hex_encode(&pubkey));
+        }
         SubCommand::Pubkey2ccid { pubkey } => {
-            let addr = utils::pubkey2addr(&hex_decode(&pubkey));
+            let addr = pubkey2addr(&hex_decode(&pubkey));
             let ccaddr = addr.to_string().replace("0x", "CC");
             println!("Address: {}", ccaddr);
         }

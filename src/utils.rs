@@ -1,10 +1,8 @@
-use alloy_primitives::keccak256;
-use alloy_primitives::Address;
-use coins_bip39::mnemonic::Mnemonic;
-use coins_bip39::Wordlist;
-use k256::ecdsa::SigningKey;
-use k256::ecdsa::VerifyingKey;
+use alloy_primitives::{keccak256, Address};
+use coins_bip39::{mnemonic::Mnemonic, Wordlist};
+use k256::ecdsa::{SigningKey, VerifyingKey};
 use k256::elliptic_curve::sec1::ToEncodedPoint;
+use std::fmt::Write;
 
 const DEFAULT_DERIVATION_PATH: &str = "m/44'/60'/0'/0/0";
 
@@ -40,4 +38,11 @@ pub fn hex_decode(hex: &str) -> Vec<u8> {
         .step_by(2)
         .map(|i| u8::from_str_radix(&hex[i..i + 2], 16).unwrap())
         .collect::<Vec<u8>>()
+}
+
+pub fn hex_encode(bytes: &[u8]) -> String {
+    bytes.iter().fold(String::new(), |mut output, b| {
+        let _ = write!(output, "{:02x}", b);
+        output
+    })
 }
