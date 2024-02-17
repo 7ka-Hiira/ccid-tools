@@ -22,7 +22,7 @@ $ ./ccid-tools <subcommand> <options>
 
 ### Generate a entity
 ```
-$ ./ccidd-tools generate
+$ ./ccidd-tools keygen
 ```
 
 ### Vanity key generation
@@ -32,17 +32,17 @@ Examples
 
 - Generate CCID starts with CC1234
 ```
-$ ./ccid-tools vanity --start-with cc1234
+$ ./ccid-tools vanity-search --start-with cc1234
 ```
 
 - Generate CCID containing abcd with 3 threads
 ```
-$ ./ccid-tools vanity --contains abcd -j 3
+$ ./ccid-tools vanity-search --contains abcd -j 3
 ```
 
 - Generate CCID where the 10 characters following the CC and the last 10 characters are numbers
 ```
-$ ./ccid-tools vanity --regex "^CC\d{10}.*\d{10}$"
+$ ./ccid-tools vanity-search --regex "^CC\d{10}.*\d{10}$"
 ```
 
 ### Key derivation
@@ -51,11 +51,11 @@ Examples
 
 - Derive privatekey from mnemonics
 ```
-$ ./ccid-tools phrase2privkey "return velvet service basket ..."
+$ ./ccid-tools phrase-to-privkey "return velvet service basket ..."
 ```
 - Derive CCID from privatekey
 ```
-$ ./ccid-tools privkey2ccid "bcb7710a8cb369bc695e7e200611d501b..."
+$ ./ccid-tools privkey-to-ccid "bcb7710a8cb369bc695e7e200611d501b..."
 ```
 
 ## Contributing
