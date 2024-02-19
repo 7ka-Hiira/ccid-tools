@@ -1,4 +1,6 @@
 use coins_bip39::{wordlist::English, Mnemonic};
+use rand::SeedableRng;
+use rand_chacha::ChaCha20Rng;
 use regex::Regex;
 use std::{sync::Arc, thread};
 
@@ -41,7 +43,7 @@ pub fn vanity_search(method: MatchMethod, threads: Option<usize>) {
 }
 
 fn search(f: &Arc<dyn Fn(&str) -> bool + Send + Sync>) {
-    let mut rng = rand::thread_rng();
+    let mut rng = ChaCha20Rng::from_entropy();
     loop {
         let mnemonic: Mnemonic<English> = Mnemonic::new(&mut rng);
         let addr = mnemonic_to_addr(&mnemonic);

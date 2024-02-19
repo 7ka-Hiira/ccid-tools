@@ -352,6 +352,7 @@ dependencies = [
  "k256",
  "num_cpus",
  "rand",
+ "rand_chacha",
  "regex",
 ]
 
