@@ -53,7 +53,7 @@ pub fn phrase_to_privkey_str(mnemonic: &str) -> String {
 pub fn phrase_to_pubkey_str(mnemonic: &str) -> String {
     let mnemonic: Mnemonic<English> = Mnemonic::from_str(mnemonic).unwrap();
     let privkey = mnemonic_to_privkey(&mnemonic);
-    hex::encode(&privkey_to_pubkey(privkey))
+    hex::encode(privkey_to_pubkey(privkey))
 }
 
 pub fn privkey_to_ccid_str(privkey: &str) -> String {
@@ -64,7 +64,7 @@ pub fn privkey_to_ccid_str(privkey: &str) -> String {
 
 pub fn privkey_to_pubkey_str(privkey: &str) -> String {
     let key = SigningKey::from_slice(&hex::decode(privkey).unwrap()).unwrap();
-    hex::encode(&privkey_to_pubkey(key))
+    hex::encode(privkey_to_pubkey(key))
 }
 
 pub fn pubkey_to_ccid_str(pubkey: &str) -> String {

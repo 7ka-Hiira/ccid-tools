@@ -20,18 +20,25 @@ struct Arg {
     subcommand: SubCommand,
 }
 
-#[derive(Parser, Clone)]
-#[group(required = true, multiple = false)]
-struct MatchMethod {
-    /// Find addresses that start with this string
-    #[clap(short, long, value_name = "HEX")]
-    start_with: Option<String>,
-    /// Find addresses that contain this string
-    #[clap(short, long, value_name = "HEX")]
-    contains: Option<String>,
-    /// Match regular expression
-    #[clap(long, value_name = "REGEX")]
-    regex: Option<String>,
+// Enum ArgGroup?
+// https://github.com/clap-rs/clap/issues/2621
+#[derive(Subcommand, Clone)]
+enum MatchMethod {
+    StartWith {
+        /// Find addresses that start with this string
+        #[clap(value_name = "HEX")]
+        hex_text: String,
+    },
+    Contains {
+        /// Find addresses that contain this string
+        #[clap(value_name = "HEX")]
+        hex_text: String,
+    },
+    Regex {
+        /// Match regular expression
+        #[clap(value_name = "REGEX")]
+        regex: String,
+    },
 }
 
 #[derive(Subcommand)]
@@ -40,7 +47,7 @@ enum SubCommand {
     Keygen {},
     /// Search for a vanity CCID
     VanitySearch {
-        #[clap(flatten)]
+        #[clap(subcommand)]
         match_method: MatchMethod,
         /// Number of threads to use
         #[clap(short = 'j', long, value_name = "THREAD_NUM")]

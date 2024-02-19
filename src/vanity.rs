@@ -9,25 +9,18 @@ use crate::MatchMethod;
 
 pub fn vanity_search(method: MatchMethod, threads: Option<usize>) {
     let matcher: Arc<dyn Fn(&str) -> bool + Send + Sync> = match method {
-        MatchMethod {
-            start_with: Some(text),
-            ..
-        } => {
-            let text = format!("0X{}", normalize_search_text(&text));
-            Arc::new(move |a: &str| a.to_uppercase().starts_with(&text))
+        MatchMethod::StartWith { hex_text } => {
+            let hex_text = format!("0X{}", normalize_search_text(&hex_text));
+            Arc::new(move |a: &str| a.to_uppercase().starts_with(&hex_text))
         }
-        MatchMethod {
-            contains: Some(text),
-            ..
-        } => {
-            let text = normalize_search_text(&text);
-            Arc::new(move |a: &str| a.to_uppercase().contains(&text))
+        MatchMethod::Contains { hex_text } => {
+            let hex_text = normalize_search_text(&hex_text);
+            Arc::new(move |a: &str| a.to_uppercase().contains(&hex_text))
         }
-        MatchMethod { regex: Some(_), .. } => {
-            let re = Regex::new(method.regex.unwrap().as_str()).unwrap();
+        MatchMethod::Regex { regex } => {
+            let re = Regex::new(&regex).map_err(|e| e.to_string()).unwrap();
             Arc::new(move |a: &str| re.is_match(a))
         }
-        _ => panic!("Invalid match method"),
     };
 
     let threads_num = threads.unwrap_or(num_cpus::get()).max(1);
