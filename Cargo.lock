@@ -349,6 +349,7 @@ dependencies = [
  "clap",
  "coins-bip32",
  "coins-bip39",
+ "hex",
  "k256",
  "num_cpus",
  "rand",

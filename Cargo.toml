@@ -11,6 +11,7 @@ alloy-primitives = "0.6.3"
 clap = { version = "4.5.0", features = ["derive"] }
 coins-bip32 = "0.8.7"
 coins-bip39 = "0.8.7"
+hex = "0.4.3"
 k256 = "0.13.3"
 num_cpus = "1.16.0"
 rand = "0.8.5"
