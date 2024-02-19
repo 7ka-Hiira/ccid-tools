@@ -4,10 +4,10 @@ use rand_chacha::ChaCha20Rng;
 use regex::Regex;
 use std::{sync::Arc, thread};
 
-use crate::utils::{is_hex, mnemonic_to_addr};
+use crate::utils::{en_mnemonic_to_ja, is_hex, mnemonic_to_addr};
 use crate::MatchMethod;
 
-pub fn vanity_search(method: MatchMethod, threads: Option<usize>) {
+pub fn vanity_search(lang: crate::MnemonicLang, method: MatchMethod, threads: Option<usize>) {
     let matcher: Arc<dyn Fn(&str) -> bool + Send + Sync> = match method {
         MatchMethod::StartWith { hex_text } => {
             let hex_text = format!("0X{}", normalize_search_text(&hex_text));
@@ -28,25 +28,29 @@ pub fn vanity_search(method: MatchMethod, threads: Option<usize>) {
 
     for _ in 0..threads_num {
         let matcher = Arc::clone(&matcher);
-        thread::spawn(move || {
-            search(matcher);
+        let lang = lang.clone();
+        thread::spawn(move || loop {
+            if let Some((mnemonic, addr)) = search(&matcher) {
+                let mnemonic = if matches!(lang, crate::MnemonicLang::Ja) {
+                    en_mnemonic_to_ja(&mnemonic)
+                } else {
+                    mnemonic
+                };
+                println!("Mnemonic: {mnemonic}\nAddress: {addr}\n");
+            };
         });
     }
     thread::park();
 }
 
-fn search(f: Arc<dyn Fn(&str) -> bool + Send + Sync>) {
+fn search(f: &Arc<dyn Fn(&str) -> bool + Send + Sync>) -> Option<(String, String)> {
     let mut rng = ChaCha20Rng::from_entropy();
-    loop {
-        let mnemonic: Mnemonic<English> = Mnemonic::new(&mut rng);
-        let addr = mnemonic_to_addr(&mnemonic);
-        if f(&addr.to_string()) {
-            println!(
-                "Mnemonic: {}\nAddress: {}\n",
-                mnemonic.to_phrase(),
-                addr.to_string().replace("0x", "CC")
-            );
-        }
+    let mnemonic: Mnemonic<English> = Mnemonic::new(&mut rng);
+    let addr = mnemonic_to_addr(&mnemonic);
+    if f(&addr.to_string()) {
+        Some((mnemonic.to_phrase(), addr.to_string().replace("0x", "CC")))
+    } else {
+        None
     }
 }
 

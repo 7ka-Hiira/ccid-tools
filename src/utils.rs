@@ -1,12 +1,31 @@
 use alloy_primitives::{keccak256, Address};
-use coins_bip39::{mnemonic::Mnemonic, English, Wordlist};
+use coins_bip39::{mnemonic::Mnemonic, English, Japanese, Wordlist};
 use k256::ecdsa::{SigningKey, VerifyingKey};
 use k256::elliptic_curve::sec1::ToEncodedPoint;
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
 use std::str::FromStr;
+use unicode_normalization::UnicodeNormalization;
 
 const DEFAULT_DERIVATION_PATH: &str = "m/44'/60'/0'/0/0";
+
+pub fn ja_mnemonic_to_en(mnemonic: &str) -> String {
+    mnemonic
+        .split_whitespace()
+        .map(|word| Japanese::get_index(&word.nfkd().collect::<String>()).unwrap())
+        .map(|index| English::get(index).unwrap().to_owned())
+        .collect::<Vec<String>>()
+        .join(" ")
+}
+
+pub fn en_mnemonic_to_ja(mnemonic: &str) -> String {
+    mnemonic
+        .split_whitespace()
+        .map(|word| English::get_index(&word.nfkd().collect::<String>()).unwrap())
+        .map(|index| Japanese::get(index).unwrap().to_owned())
+        .collect::<Vec<String>>()
+        .join(" ")
+}
 
 pub fn mnemonic_to_addr<W: Wordlist>(mnemonic: &Mnemonic<W>) -> Address {
     privkey_to_addr(mnemonic_to_privkey(mnemonic))
@@ -74,10 +93,14 @@ pub fn pubkey_to_ccid_str(pubkey: &str) -> String {
     addr.to_string().replace("0x", "CC")
 }
 
-pub fn generate_ccid<T: Wordlist>() -> (String, String, String) {
-    let mnemonic: Mnemonic<T> = Mnemonic::new(&mut ChaCha20Rng::from_entropy());
-    let mnemonic = mnemonic.to_phrase();
+pub fn generate_ccid<T: Wordlist>(lang: crate::MnemonicLang) -> (String, String, String) {
+    let mnemonic = Mnemonic::<T>::new(&mut ChaCha20Rng::from_entropy()).to_phrase();
     let privkey = phrase_to_privkey_str(&mnemonic);
     let ccid = phrase_to_ccid_str(&mnemonic);
+    let mnemonic = if matches!(lang, crate::MnemonicLang::Ja) {
+        en_mnemonic_to_ja(&mnemonic)
+    } else {
+        mnemonic
+    };
     (mnemonic, privkey, ccid)
 }

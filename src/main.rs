@@ -1,13 +1,16 @@
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 
 mod vanity;
 use vanity::vanity_search;
 
 pub mod utils;
-use utils::{
-    generate_ccid, phrase_to_ccid_str, phrase_to_privkey_str, phrase_to_pubkey_str,
-    privkey_to_ccid_str, privkey_to_pubkey_str, pubkey_to_ccid_str,
-};
+use utils::*;
+
+#[derive(Clone, ValueEnum)]
+pub enum MnemonicLang {
+    En,
+    Ja,
+}
 
 #[derive(Parser)]
 #[clap(
@@ -18,6 +21,8 @@ use utils::{
 struct Arg {
     #[clap(subcommand)]
     subcommand: SubCommand,
+    #[clap(short, long, value_name = "MNEMONIC_LANG", value_enum, default_value_t = MnemonicLang::En)]
+    lang: MnemonicLang,
 }
 
 // Enum ArgGroup?
@@ -92,9 +97,10 @@ enum SubCommand {
 }
 
 fn main() {
-    match Arg::parse().subcommand {
+    let args = Arg::parse();
+    match args.subcommand {
         SubCommand::Keygen {} => {
-            let entity = generate_ccid::<coins_bip39::English>();
+            let entity = generate_ccid::<coins_bip39::English>(args.lang);
             println!(
                 "Mnemonic: {}\nPrivate Key: {}\nCCID: {}",
                 entity.0, entity.1, entity.2
@@ -104,15 +110,30 @@ fn main() {
             match_method,
             threads,
         } => {
-            vanity_search(match_method, threads);
+            vanity_search(args.lang, match_method, threads);
         }
         SubCommand::PhraseToCcid { mnemonic } => {
+            let mnemonic = if matches!(args.lang, MnemonicLang::Ja) {
+                ja_mnemonic_to_en(&mnemonic)
+            } else {
+                mnemonic
+            };
             println!("{}", phrase_to_ccid_str(&mnemonic));
         }
         SubCommand::PhraseToPrivkey { mnemonic } => {
+            let mnemonic = if matches!(args.lang, MnemonicLang::Ja) {
+                ja_mnemonic_to_en(&mnemonic)
+            } else {
+                mnemonic
+            };
             println!("{}", phrase_to_privkey_str(&mnemonic));
         }
         SubCommand::PhraseToPubkey { mnemonic } => {
+            let mnemonic = if matches!(args.lang, MnemonicLang::Ja) {
+                ja_mnemonic_to_en(&mnemonic)
+            } else {
+                mnemonic
+            };
             println!("{}", phrase_to_pubkey_str(&mnemonic));
         }
         SubCommand::PrivkeyToCcid { privkey } => {
