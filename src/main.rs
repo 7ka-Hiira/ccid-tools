@@ -7,7 +7,7 @@ pub mod utils;
 use utils::*;
 
 #[derive(Clone, ValueEnum)]
-enum MnemonicLang {
+pub enum MnemonicLang {
     En,
     Ja,
 }
@@ -100,7 +100,7 @@ fn main() {
     let args = Arg::parse();
     match args.subcommand {
         SubCommand::Keygen {} => {
-            let entity = generate_ccid::<coins_bip39::English>();
+            let entity = generate_ccid::<coins_bip39::English>(args.lang);
             println!(
                 "Mnemonic: {}\nPrivate Key: {}\nCCID: {}",
                 entity.0, entity.1, entity.2
@@ -110,7 +110,7 @@ fn main() {
             match_method,
             threads,
         } => {
-            vanity_search(match_method, threads);
+            vanity_search(args.lang, match_method, threads);
         }
         SubCommand::PhraseToCcid { mnemonic } => {
             let mnemonic = if matches!(args.lang, MnemonicLang::Ja) {
