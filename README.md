@@ -18,6 +18,11 @@ $ chmod +x ./ccid-tools
 $ ./ccid-tools <subcommand> <options>
 ```
 
+- Tips: Building and optimizing on your CPU may improve speed
+```
+RUSTFLAGS="-C target-cpu=native" cargo build --release
+```
+
 ## Usage
 
 ### Generate a entity
