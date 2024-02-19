@@ -2,6 +2,8 @@ use alloy_primitives::{keccak256, Address};
 use coins_bip39::{mnemonic::Mnemonic, English, Wordlist};
 use k256::ecdsa::{SigningKey, VerifyingKey};
 use k256::elliptic_curve::sec1::ToEncodedPoint;
+use rand::SeedableRng;
+use rand_chacha::ChaCha20Rng;
 use std::str::FromStr;
 
 const DEFAULT_DERIVATION_PATH: &str = "m/44'/60'/0'/0/0";
@@ -73,7 +75,7 @@ pub fn pubkey_to_ccid_str(pubkey: &str) -> String {
 }
 
 pub fn generate_ccid<T: Wordlist>() -> (String, String, String) {
-    let mnemonic: Mnemonic<T> = Mnemonic::new(&mut rand::thread_rng());
+    let mnemonic: Mnemonic<T> = Mnemonic::new(&mut ChaCha20Rng::from_entropy());
     let mnemonic = mnemonic.to_phrase();
     let privkey = phrase_to_privkey_str(&mnemonic);
     let ccid = phrase_to_ccid_str(&mnemonic);
