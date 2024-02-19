@@ -2,8 +2,6 @@
 
 Tools for working with CCID (used in [concurrent](https://github.com/totegamma/concurrent))
 
-Currently supports only English mnemonics
-
 ## Installation
 
 1. Download binary from [Releases](https://github.com/7ka-Hiira/ccid-tools/releases/latest)
