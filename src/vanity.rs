@@ -36,13 +36,13 @@ pub fn vanity_search(method: MatchMethod, threads: Option<usize>) {
     for _ in 0..threads_num {
         let matcher = Arc::clone(&matcher);
         thread::spawn(move || {
-            search(&matcher);
+            search(matcher);
         });
     }
     thread::park();
 }
 
-fn search(f: &Arc<dyn Fn(&str) -> bool + Send + Sync>) {
+fn search(f: Arc<dyn Fn(&str) -> bool + Send + Sync>) {
     let mut rng = ChaCha20Rng::from_entropy();
     loop {
         let mnemonic: Mnemonic<English> = Mnemonic::new(&mut rng);
