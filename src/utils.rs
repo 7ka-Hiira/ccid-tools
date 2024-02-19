@@ -87,13 +87,10 @@ pub fn pubkey_to_ccid_str(pubkey: &str) -> String {
     addr.to_string().replace("0x", "CC")
 }
 
-pub fn generate_ccid<T: Wordlist>() {
+pub fn generate_ccid<T: Wordlist>() -> (String, String, String) {
     let mnemonic: Mnemonic<T> = Mnemonic::new(&mut rand::thread_rng());
     let mnemonic = mnemonic.to_phrase();
     let privkey = phrase_to_privkey_str(&mnemonic);
     let ccid = phrase_to_ccid_str(&mnemonic);
-    println!(
-        "Mnemonic: {}\nPrivateKey: {}\nAddress: {}",
-        mnemonic, privkey, ccid
-    );
+    (mnemonic, privkey, ccid)
 }

@@ -35,9 +35,9 @@ You'll get Mnemonics and Addresses
 
 Examples
 
-- Generate CCID starts with CC1234
+- Generate CCID starts with 12345
 ```
-$ ./ccid-tools vanity-search --start-with cc1234
+$ ./ccid-tools vanity-search --start-with 12345
 ```
 
 - Generate CCID containing abcd with 3 threads
@@ -47,7 +47,7 @@ $ ./ccid-tools vanity-search --contains abcd -j 3
 
 - Generate CCID where the 10 characters following the CC and the last 10 characters are numbers
 ```
-$ ./ccid-tools vanity-search --regex "^CC\d{10}.*\d{10}$"
+$ ./ccid-tools vanity-search --regex "^\d{10}.*\d{10}$"
 ```
 
 ### Key derivation

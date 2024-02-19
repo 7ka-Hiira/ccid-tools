@@ -21,7 +21,7 @@ struct Arg {
 }
 
 #[derive(Parser, Clone)]
-#[group(required = true)]
+#[group(required = true, multiple = false)]
 struct MatchMethod {
     /// Find addresses that start with this string
     #[clap(short, long, value_name = "HEX")]
@@ -87,7 +87,11 @@ enum SubCommand {
 fn main() {
     match Arg::parse().subcommand {
         SubCommand::Keygen {} => {
-            generate_ccid::<coins_bip39::English>();
+            let entity = generate_ccid::<coins_bip39::English>();
+            println!(
+                "Mnemonic: {}\nPrivate Key: {}\nCCID: {}",
+                entity.0, entity.1, entity.2
+            );
         }
         SubCommand::VanitySearch {
             match_method,
