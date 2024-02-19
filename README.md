@@ -33,19 +33,19 @@ You'll get Mnemonics and Addresses
 
 Examples
 
-- Generate CCID starts with 12345
+- Generate CCID starts with 12345 and Japanese mnemonic
 ```
-$ ./ccid-tools vanity-search start-with 12345
+$ ./ccid-tools vanity-search --start-with 12345 --lang ja
 ```
 
-- Generate CCID containing abcd with 3 threads
+- Generate CCID containing abcdef (case-sensitive) with 3 threads, stop when one is found
 ```
-$ ./ccid-tools vanity-search contains abcd -j 3
+$ ./ccid-tools vanity-search --contains abcdef -j3 --stop-when-found --case-sensitive
 ```
 
 - Generate CCID where the 10 characters following the CC and the last 10 characters are numbers
 ```
-$ ./ccid-tools vanity-search regex "^\d{10}.*\d{10}$"
+$ ./ccid-tools vanity-search --regex "^CC\d{10}.*\d{10}$"
 ```
 
 ### Key derivation
@@ -63,7 +63,7 @@ $ ./ccid-tools privkey-to-ccid "bcb7710a8cb369bc695e7e200611d501b..."
 
 ## Contributing
 
-New features, bug reports/fixes, and improvements to this terrible code are welcome:)
+New features, bug reports/fixes, and improvements are welcome:)
 
 ## License
 
