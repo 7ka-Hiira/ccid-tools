@@ -25,7 +25,7 @@ RUSTFLAGS="-C target-cpu=native" cargo build --release
 
 ## Usage
 
-### Generate a entity
+### Generate an entity
 ```
 $ ./ccidd-tools keygen
 ```
