@@ -18,6 +18,8 @@ pub fn vanity_search(
     let matcher: Arc<dyn Fn(&str) -> bool + Send + Sync> = match (method, case_sensitive) {
         (StartsWith(hex), false) => Arc::new(move |a: &str| a.to_lowercase().starts_with(&hex)),
         (StartsWith(hex), true) => Arc::new(move |a: &str| a.starts_with(&hex)),
+        (EndsWith(hex), false) => Arc::new(move |a: &str| a.to_lowercase().ends_with(&hex)),
+        (EndsWith(hex), true) => Arc::new(move |a: &str| a.ends_with(&hex)),
         (Contains(hex), false) => Arc::new(move |a: &str| a.to_lowercase().contains(&hex)),
         (Contains(hex), true) => Arc::new(move |a: &str| a.contains(&hex)),
         (Regex(regex), case_sensitive) => {
@@ -75,7 +77,7 @@ fn search(
 
 fn validate_and_normalize_method(method: MatchMethod, case_sensitive: bool) -> MatchMethod {
     match &method {
-        StartsWith(text) | Contains(text) => {
+        StartsWith(text) | EndsWith(text) | Contains(text) => {
             if !text.to_uppercase().chars().all(|c| c.is_ascii_hexdigit()) {
                 eprintln!("CCID must be a HEX (0-9, A-F) string");
                 std::process::exit(1);
@@ -92,6 +94,7 @@ fn validate_and_normalize_method(method: MatchMethod, case_sensitive: bool) -> M
             } else {
                 match &method {
                     StartsWith(_) => StartsWith(format!("0x{}", text).to_lowercase()),
+                    EndsWith(_) => EndsWith(text.to_lowercase()),
                     Contains(_) => Contains(text.to_lowercase()),
                     _ => method,
                 }

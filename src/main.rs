@@ -1,10 +1,9 @@
-use clap::{Parser, Subcommand, ValueEnum};
-
-mod vanity;
-use vanity::vanity_search;
-
 pub mod utils;
+mod vanity;
+
+use clap::{Parser, Subcommand, ValueEnum};
 use utils::*;
+use vanity::vanity_search;
 
 #[derive(Parser)]
 #[clap(
@@ -33,6 +32,10 @@ struct MatchMethodStruct {
     #[clap(short, long, value_name = "HEX")]
     starts_with: Option<String>,
 
+    /// Find addresses that ends with this string
+    #[clap(short, long, value_name = "HEX")]
+    ends_with: Option<String>,
+
     /// Find addresses that contains this string
     #[clap(short, long, value_name = "HEX")]
     contains: Option<String>,
@@ -43,6 +46,7 @@ struct MatchMethodStruct {
 }
 enum MatchMethod {
     StartsWith(String),
+    EndsWith(String),
     Contains(String),
     Regex(String),
 }
@@ -108,6 +112,7 @@ enum SubCommand {
         #[clap(value_name = "HEX_PUBLIC_KEY")]
         pubkey: String,
     },
+    /// Translate a mnemonic phrase to another language
     TranslatePhrase {
         /// Specify the target mnemonic language
         #[clap(value_name = "TARGET_LANG", value_enum, required = true)]
@@ -145,6 +150,10 @@ fn main() {
                     ..
                 } => MatchMethod::StartsWith(starts_with),
                 MatchMethodStruct {
+                    ends_with: Some(ends_with),
+                    ..
+                } => MatchMethod::EndsWith(ends_with),
+                MatchMethodStruct {
                     contains: Some(contains),
                     ..
                 } => MatchMethod::Contains(contains),
@@ -152,7 +161,7 @@ fn main() {
                     regex: Some(regex), ..
                 } => MatchMethod::Regex(regex),
                 _ => {
-                    eprintln!("One of --starts-with, --contains, or --regex must be specified");
+                    eprintln!("Invalid match method");
                     std::process::exit(1);
                 }
             };
