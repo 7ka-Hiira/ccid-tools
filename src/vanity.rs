@@ -4,8 +4,8 @@ use rand_chacha::ChaCha20Rng;
 use regex::RegexBuilder;
 use std::{sync::Arc, thread};
 
-use crate::utils::{en_mnemonic_to_ja, is_hex, mnemonic_to_addr};
-use crate::MatchMethod;
+use crate::utils::{en_mnemonic_to_ja, mnemonic_to_addr};
+use crate::MatchMethod::{self, *};
 
 pub fn vanity_search(
     method: MatchMethod,
@@ -14,46 +14,28 @@ pub fn vanity_search(
     case_sensitive: bool,
     lang: crate::MnemonicLang,
 ) {
-    let matcher: Arc<dyn Fn(&str) -> bool + Send + Sync> = match method {
-        MatchMethod {
-            start_with: Some(start_with),
-            ..
-        } => {
-            let start_with = format!("0X{}", normalize_search_text(&start_with, case_sensitive));
-            if case_sensitive {
-                Arc::new(move |a: &str| a.starts_with(&start_with))
-            } else {
-                Arc::new(move |a: &str| a.to_uppercase().starts_with(&start_with))
-            }
-        }
-        MatchMethod {
-            contains: Some(contains),
-            ..
-        } => {
-            let contains = normalize_search_text(&contains, case_sensitive);
-            if case_sensitive {
-                Arc::new(move |a: &str| a.contains(&contains))
-            } else {
-                Arc::new(move |a: &str| a.to_uppercase().contains(&contains))
-            }
-        }
-        MatchMethod {
-            regex: Some(regex), ..
-        } => {
+    let method = validate_and_normalize_method(method, case_sensitive);
+    let matcher: Arc<dyn Fn(&str) -> bool + Send + Sync> = match (method, case_sensitive) {
+        (StartsWith(hex), false) => Arc::new(move |a: &str| a.to_lowercase().starts_with(&hex)),
+        (StartsWith(hex), true) => Arc::new(move |a: &str| a.starts_with(&hex)),
+        (Contains(hex), false) => Arc::new(move |a: &str| a.to_lowercase().contains(&hex)),
+        (Contains(hex), true) => Arc::new(move |a: &str| a.contains(&hex)),
+        (Regex(regex), case_sensitive) => {
             let re = RegexBuilder::new(&regex)
                 .case_insensitive(!case_sensitive)
                 .build()
-                .unwrap();
+                .unwrap_or_else(|e| {
+                    eprintln!("Invalid regex: {}", e);
+                    std::process::exit(1);
+                });
             Arc::new(move |a: &str| re.is_match(&a.replace("0x", "CC")))
         }
-        _ => panic!("Invalid match method"),
     };
 
     let threads_num = threads.unwrap_or(num_cpus::get()).max(1);
     println!("Searching using {} threads", threads_num);
 
     let mut handles = vec![];
-
     for _ in 0..threads_num {
         let matcher = Arc::clone(&matcher);
         let lang = lang.clone();
@@ -91,15 +73,30 @@ fn search(
     }
 }
 
-fn normalize_search_text(text: &str, case_sensitive: bool) -> String {
-    if !is_hex(text) {
-        panic!("CCID must be a HEX (0-9, A-F) string");
-    } else if text.len() > 40 {
-        panic!("Max CCID length is 40 excluding 'CC' prefix");
-    }
-    if case_sensitive {
-        text.to_string()
-    } else {
-        text.to_uppercase()
+fn validate_and_normalize_method(method: MatchMethod, case_sensitive: bool) -> MatchMethod {
+    match &method {
+        StartsWith(text) | Contains(text) => {
+            if !text.to_uppercase().chars().all(|c| c.is_ascii_hexdigit()) {
+                eprintln!("CCID must be a HEX (0-9, A-F) string");
+                std::process::exit(1);
+            }
+            if text.len() > 40 {
+                eprintln!("Max CCID length is 40 excluding 'CC' prefix");
+                std::process::exit(1);
+            }
+            if case_sensitive {
+                match &method {
+                    StartsWith(_) => StartsWith(format!("0x{}", text)),
+                    _ => method,
+                }
+            } else {
+                match &method {
+                    StartsWith(_) => StartsWith(format!("0x{}", text).to_lowercase()),
+                    Contains(_) => Contains(text.to_lowercase()),
+                    _ => method,
+                }
+            }
+        }
+        _ => method,
     }
 }

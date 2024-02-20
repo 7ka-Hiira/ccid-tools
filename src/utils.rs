@@ -16,9 +16,10 @@ pub fn ja_mnemonic_to_en(mnemonic: &str) -> String {
     mnemonic
         .split_whitespace()
         .map(|word| {
-            Japanese::get_index(&word.nfkd().collect::<String>())
-                .map_err(|e| panic!("Failed to perse Japanese mnemonic into English: {}", e))
-                .unwrap()
+            Japanese::get_index(&word.nfkd().collect::<String>()).unwrap_or_else(|e| {
+                eprintln!("Failed to perse Japanese mnemonic into English: {}", e);
+                std::process::exit(1)
+            })
         })
         .map(|index| English::get(index).unwrap().to_owned())
         .collect::<Vec<String>>()
@@ -29,9 +30,10 @@ pub fn en_mnemonic_to_ja(mnemonic: &str) -> String {
     mnemonic
         .split_whitespace()
         .map(|word| {
-            English::get_index(&word.nfkd().collect::<String>())
-                .map_err(|e| panic!("Failed to perse English mnemonic into Japanese: {}", e))
-                .unwrap()
+            English::get_index(&word.nfkd().collect::<String>()).unwrap_or_else(|e| {
+                eprintln!("Failed to perse English mnemonic into Japanese: {}", e);
+                std::process::exit(1)
+            })
         })
         .map(|index| Japanese::get(index).unwrap().to_owned())
         .collect::<Vec<String>>()
@@ -50,7 +52,8 @@ pub fn detect_mnemonic_lang(mnemonic: &str) -> MnemonicLang {
     {
         MnemonicLang::En
     } else {
-        panic!("Invalid mnemonic")
+        eprintln!("Invalid mnemonic: {}", mnemonic);
+        std::process::exit(1);
     }
 }
 
@@ -81,14 +84,6 @@ pub fn pubkey_to_addr(pubkey: &[u8]) -> Result<Address, Box<dyn Error>> {
     Ok(Address::from_slice(
         &keccak256(&pubkey.as_bytes()[1..])[12..],
     ))
-}
-
-pub fn start_with_cc(text: &str) -> bool {
-    text.to_uppercase().starts_with("CC")
-}
-
-pub fn is_hex(text: &str) -> bool {
-    text.to_uppercase().chars().all(|c| c.is_ascii_hexdigit())
 }
 
 pub fn phrase_to_ccid_str(mnemonic: &str) -> Result<String, Box<dyn Error>> {
@@ -123,7 +118,7 @@ pub fn pubkey_to_ccid_str(pubkey: &str) -> Result<String, Box<dyn Error>> {
     Ok(addr?.to_string().replace("0x", "CC"))
 }
 
-pub fn generate_ccid<T: Wordlist>(
+pub fn generate_entity<T: Wordlist>(
     lang: crate::MnemonicLang,
 ) -> Result<(String, String, String), Box<dyn Error>> {
     let mnemonic = Mnemonic::<T>::new(&mut ChaCha20Rng::from_entropy()).to_phrase();

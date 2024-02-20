@@ -35,7 +35,7 @@ Examples
 
 - Generate CCID starts with 12345 and Japanese mnemonic
 ```
-$ ./ccid-tools vanity-search --start-with 12345 --lang ja
+$ ./ccid-tools vanity-search --starts-with 12345 --lang ja
 ```
 
 - Generate CCID containing abcdef (case-sensitive) with 3 threads, stop when one is found
