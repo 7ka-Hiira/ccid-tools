@@ -94,11 +94,14 @@ enum SubCommand {
         #[clap(value_name = "MNEMONIC")]
         mnemonic: String,
     },
-    /// Derive a CCID from a private key
-    PrivkeyToCcid {
+    /// Derive a CCID or CKID from a private key
+    PrivkeyToAddress {
         /// Private key
         #[clap(value_name = "HEX_PRIVATE_KEY")]
         privkey: String,
+        /// Enable subkey mode
+        #[clap(long, value_name = "BOOL", default_value_t = false)]
+        subkey: bool,
     },
     /// Derive a public key from a private key
     PrivkeyToPubkey {
@@ -106,11 +109,14 @@ enum SubCommand {
         #[clap(value_name = "HEX_PRIVATE_KEY")]
         privkey: String,
     },
-    /// Derive a CCID from a public key
-    PubkeyToCcid {
+    /// Derive a CCID or CKID from a public key
+    PubkeyToAddress {
         /// Public key
         #[clap(value_name = "HEX_PUBLIC_KEY")]
         pubkey: String,
+        /// Enable subkey mode
+        #[clap(long, value_name = "BOOL", default_value_t = false)]
+        subkey: bool,
     },
     /// Translate a mnemonic phrase to another language
     TranslatePhrase {
@@ -206,10 +212,10 @@ fn main() {
                 })
             )
         }
-        SubCommand::PrivkeyToCcid { privkey } => {
+        SubCommand::PrivkeyToAddress { privkey, subkey } => {
             println!(
                 "{}",
-                privkey_to_ccid_str(&privkey).unwrap_or_else(|e| {
+                privkey_to_address_str(&privkey, subkey).unwrap_or_else(|e| {
                     eprintln!("Failed to derive CCID from private key: {}", e);
                     std::process::exit(1);
                 })
@@ -224,10 +230,10 @@ fn main() {
                 })
             );
         }
-        SubCommand::PubkeyToCcid { pubkey } => {
+        SubCommand::PubkeyToAddress { pubkey, subkey } => {
             println!(
                 "{}",
-                pubkey_to_ccid_str(&pubkey).unwrap_or_else(|e| {
+                pubkey_to_address_str(&pubkey, subkey).unwrap_or_else(|e| {
                     eprintln!("Failed to derive CCID from public key: {}", e);
                     std::process::exit(1);
                 })

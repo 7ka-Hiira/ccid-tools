@@ -102,10 +102,14 @@ pub fn phrase_to_pubkey_str(mnemonic: &str) -> Result<String, Box<dyn Error>> {
     Ok(hex::encode(privkey_to_pubkey(privkey)))
 }
 
-pub fn privkey_to_ccid_str(privkey: &str) -> Result<String, Box<dyn Error>> {
+pub fn privkey_to_address_str(privkey: &str, is_subkey: bool) -> Result<String, Box<dyn Error>> {
     let key = SigningKey::from_slice(&hex::decode(privkey)?)?;
     let addr = privkey_to_addr(key);
-    Ok(addr?.to_string().replace("0x", "CC"))
+    if is_subkey {
+        Ok(addr?.to_string().replace("0x", "CK"))
+    } else {
+        Ok(addr?.to_string().replace("0x", "CC"))
+    }
 }
 
 pub fn privkey_to_pubkey_str(privkey: &str) -> Result<String, Box<dyn Error>> {
@@ -113,9 +117,13 @@ pub fn privkey_to_pubkey_str(privkey: &str) -> Result<String, Box<dyn Error>> {
     Ok(hex::encode(privkey_to_pubkey(key)))
 }
 
-pub fn pubkey_to_ccid_str(pubkey: &str) -> Result<String, Box<dyn Error>> {
+pub fn pubkey_to_address_str(pubkey: &str, is_subkey: bool) -> Result<String, Box<dyn Error>> {
     let addr = pubkey_to_addr(&hex::decode(pubkey)?);
-    Ok(addr?.to_string().replace("0x", "CC"))
+    if is_subkey {
+        Ok(addr?.to_string().replace("0x", "CK"))
+    } else {
+        Ok(addr?.to_string().replace("0x", "CC"))
+    }
 }
 
 pub fn generate_entity<T: Wordlist>(

@@ -42,33 +42,43 @@ pub fn vanity_search(
         let matcher = Arc::clone(&matcher);
         let lang = lang.clone();
         let handle = thread::spawn(move || {
-            let mut rng = ChaCha20Rng::from_entropy();
-            loop {
-                if let Some((mnemonic, addr)) = search(&matcher, &mut rng) {
-                    let mnemonic = if matches!(lang, crate::MnemonicLang::Ja) {
-                        en_mnemonic_to_ja(&mnemonic)
-                    } else {
-                        mnemonic
-                    };
-                    println!("Mnemonic: {mnemonic}\nAddress: {addr}\n");
-                    if stop_when_found {
-                        std::process::exit(0);
-                    }
-                }
-            }
+            search_worker(&matcher, stop_when_found, lang);
         });
         handles.push(handle);
     }
     handles.into_iter().for_each(|h| h.join().unwrap());
 }
 
+#[inline]
+fn search_worker(
+    matcher: &Arc<dyn Fn(&str) -> bool + Send + Sync>,
+    stop_when_found: bool,
+    lang: crate::MnemonicLang,
+) {
+    let mut rng = ChaCha20Rng::from_entropy();
+    loop {
+        if let Some((mnemonic, addr)) = search(matcher, &mut rng) {
+            let mnemonic = if matches!(lang, crate::MnemonicLang::Ja) {
+                en_mnemonic_to_ja(&mnemonic)
+            } else {
+                mnemonic
+            };
+            println!("Mnemonic: {mnemonic}\nAddress: {addr}\n");
+            if stop_when_found {
+                std::process::exit(0);
+            }
+        }
+    }
+}
+
+#[inline]
 fn search(
-    is_match: &Arc<dyn Fn(&str) -> bool + Send + Sync>,
+    matcher: &Arc<dyn Fn(&str) -> bool + Send + Sync>,
     rng: &mut rand_chacha::ChaCha20Rng,
 ) -> Option<(String, String)> {
     let mnemonic: Mnemonic<English> = Mnemonic::new(rng);
     let addr = mnemonic_to_addr(&mnemonic).unwrap();
-    if is_match(&addr.to_string()) {
+    if matcher(&addr.to_string()) {
         Some((mnemonic.to_phrase(), addr.to_string().replace("0x", "CC")))
     } else {
         None
