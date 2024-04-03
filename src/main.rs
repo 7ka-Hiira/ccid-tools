@@ -94,7 +94,7 @@ enum SubCommand {
         #[clap(value_name = "MNEMONIC")]
         mnemonic: String,
     },
-    /// Derive a CCID or CKID from a private key
+    /// Derive a CCID or a CKID from a private key
     PrivkeyToAddress {
         /// Private key
         #[clap(value_name = "HEX_PRIVATE_KEY")]
@@ -109,7 +109,7 @@ enum SubCommand {
         #[clap(value_name = "HEX_PRIVATE_KEY")]
         privkey: String,
     },
-    /// Derive a CCID or CKID from a public key
+    /// Derive a CCID or a CKID from a public key
     PubkeyToAddress {
         /// Public key
         #[clap(value_name = "HEX_PUBLIC_KEY")]
