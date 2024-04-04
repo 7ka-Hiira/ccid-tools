@@ -1,11 +1,12 @@
 use alloy_primitives::{keccak256, Address};
+use coins_bip32::prelude::SigningKey as Bip32SigningKey;
 use coins_bip39::{mnemonic::Mnemonic, English, Japanese, Wordlist};
+use core::str::FromStr;
 use k256::ecdsa::{SigningKey, VerifyingKey};
 use k256::elliptic_curve::sec1::ToEncodedPoint;
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
 use std::error::Error;
-use std::str::FromStr;
 use unicode_normalization::UnicodeNormalization;
 
 use crate::MnemonicLang;
@@ -17,8 +18,7 @@ pub fn ja_mnemonic_to_en(mnemonic: &str) -> String {
         .split_whitespace()
         .map(|word| {
             Japanese::get_index(&word.nfkd().collect::<String>()).unwrap_or_else(|e| {
-                eprintln!("Failed to perse Japanese mnemonic into English: {}", e);
-                std::process::exit(1)
+                panic!("Failed to perse Japanese mnemonic into English: {e}");
             })
         })
         .map(|index| English::get(index).unwrap().to_owned())
@@ -31,8 +31,7 @@ pub fn en_mnemonic_to_ja(mnemonic: &str) -> String {
         .split_whitespace()
         .map(|word| {
             English::get_index(&word.nfkd().collect::<String>()).unwrap_or_else(|e| {
-                eprintln!("Failed to perse English mnemonic into Japanese: {}", e);
-                std::process::exit(1)
+                panic!("Failed to perse English mnemonic into Japanese: {e}");
             })
         })
         .map(|index| Japanese::get(index).unwrap().to_owned())
@@ -52,28 +51,27 @@ pub fn detect_mnemonic_lang(mnemonic: &str) -> MnemonicLang {
     {
         MnemonicLang::En
     } else {
-        eprintln!("Invalid mnemonic: {}", mnemonic);
-        std::process::exit(1);
+        panic!("Invalid mnemonic: {mnemonic}");
     }
 }
 
 pub fn mnemonic_to_addr<W: Wordlist>(mnemonic: &Mnemonic<W>) -> Result<Address, Box<dyn Error>> {
-    privkey_to_addr(mnemonic_to_privkey(mnemonic)?)
+    privkey_to_addr(&mnemonic_to_privkey(mnemonic)?)
 }
 
 pub fn mnemonic_to_privkey<W: Wordlist>(
     mnemonic: &Mnemonic<W>,
 ) -> Result<SigningKey, Box<dyn Error>> {
     let priv_key = mnemonic.derive_key(DEFAULT_DERIVATION_PATH, None)?;
-    let key: &coins_bip32::prelude::SigningKey = priv_key.as_ref();
+    let key: &Bip32SigningKey = priv_key.as_ref();
     Ok(SigningKey::from_bytes(&key.to_bytes())?)
 }
 
-pub fn privkey_to_addr(privkey: SigningKey) -> Result<Address, Box<dyn Error>> {
+pub fn privkey_to_addr(privkey: &SigningKey) -> Result<Address, Box<dyn Error>> {
     pubkey_to_addr(&privkey_to_pubkey(privkey))
 }
 
-pub fn privkey_to_pubkey(privkey: SigningKey) -> Vec<u8> {
+pub fn privkey_to_pubkey(privkey: &SigningKey) -> Vec<u8> {
     privkey.verifying_key().to_sec1_bytes().to_vec()
 }
 
@@ -99,12 +97,12 @@ pub fn phrase_to_privkey_str(mnemonic: &str) -> Result<String, Box<dyn Error>> {
 pub fn phrase_to_pubkey_str(mnemonic: &str) -> Result<String, Box<dyn Error>> {
     let mnemonic: Mnemonic<English> = Mnemonic::from_str(mnemonic)?;
     let privkey = mnemonic_to_privkey(&mnemonic)?;
-    Ok(hex::encode(privkey_to_pubkey(privkey)))
+    Ok(hex::encode(privkey_to_pubkey(&privkey)))
 }
 
 pub fn privkey_to_address_str(privkey: &str, is_subkey: bool) -> Result<String, Box<dyn Error>> {
     let key = SigningKey::from_slice(&hex::decode(privkey)?)?;
-    let addr = privkey_to_addr(key);
+    let addr = privkey_to_addr(&key);
     if is_subkey {
         Ok(addr?.to_string().replace("0x", "CK"))
     } else {
@@ -114,7 +112,7 @@ pub fn privkey_to_address_str(privkey: &str, is_subkey: bool) -> Result<String, 
 
 pub fn privkey_to_pubkey_str(privkey: &str) -> Result<String, Box<dyn Error>> {
     let key = SigningKey::from_slice(&hex::decode(privkey)?)?;
-    Ok(hex::encode(privkey_to_pubkey(key)))
+    Ok(hex::encode(privkey_to_pubkey(&key)))
 }
 
 pub fn pubkey_to_address_str(pubkey: &str, is_subkey: bool) -> Result<String, Box<dyn Error>> {
@@ -127,7 +125,7 @@ pub fn pubkey_to_address_str(pubkey: &str, is_subkey: bool) -> Result<String, Bo
 }
 
 pub fn generate_entity<T: Wordlist>(
-    lang: crate::MnemonicLang,
+    lang: &crate::MnemonicLang,
 ) -> Result<(String, String, String), Box<dyn Error>> {
     let mnemonic = Mnemonic::<T>::new(&mut ChaCha20Rng::from_entropy()).to_phrase();
     let privkey = phrase_to_privkey_str(&mnemonic)?;

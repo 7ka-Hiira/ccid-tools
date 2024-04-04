@@ -2,8 +2,11 @@ pub mod utils;
 mod vanity;
 
 use clap::{Parser, Subcommand, ValueEnum};
-use utils::*;
-use vanity::vanity_search;
+use utils::{
+    detect_mnemonic_lang, en_mnemonic_to_ja, generate_entity, ja_mnemonic_to_en,
+    phrase_to_ccid_str, phrase_to_privkey_str, phrase_to_pubkey_str, privkey_to_address_str,
+    privkey_to_pubkey_str, pubkey_to_address_str,
+};
 
 #[derive(Parser)]
 #[clap(
@@ -16,7 +19,7 @@ struct Arg {
     subcommand: SubCommand,
 }
 
-#[derive(Clone, ValueEnum)]
+#[derive(Clone, Copy, ValueEnum)]
 pub enum MnemonicLang {
     En,
     Ja,
@@ -133,9 +136,8 @@ fn main() {
     let args = Arg::parse();
     match args.subcommand {
         SubCommand::Keygen { lang } => {
-            let entity = generate_entity::<coins_bip39::English>(lang).unwrap_or_else(|e| {
-                eprintln!("Failed to generate entity: {}", e);
-                std::process::exit(1);
+            let entity = generate_entity::<coins_bip39::English>(&lang).unwrap_or_else(|e| {
+                panic!("Failed to generate entity: {e}");
             });
             println!(
                 "Mnemonic: {}\nPrivate Key: {}\nCCID: {}",
@@ -167,57 +169,52 @@ fn main() {
                     regex: Some(regex), ..
                 } => MatchMethod::Regex(regex),
                 _ => {
-                    eprintln!("Invalid match method");
-                    std::process::exit(1);
+                    panic!("Invalid match method");
                 }
             };
-            vanity_search(match_method, threads, stop_when_found, case_sensitive, lang);
+            vanity::lookup(match_method, threads, stop_when_found, case_sensitive, lang);
         }
         SubCommand::PhraseToCcid { mnemonic } => {
             let mnemonic = match detect_mnemonic_lang(&mnemonic) {
                 MnemonicLang::Ja => ja_mnemonic_to_en(&mnemonic),
-                _ => mnemonic,
+                MnemonicLang::En => mnemonic,
             };
             println!(
                 "{}",
                 phrase_to_ccid_str(&mnemonic).unwrap_or_else(|e| {
-                    eprintln!("Failed to derive CCID from mnemonic: {}", e);
-                    std::process::exit(1);
+                    panic!("Failed to derive CCID from mnemonic: {e}");
                 })
             );
         }
         SubCommand::PhraseToPrivkey { mnemonic } => {
             let mnemonic = match detect_mnemonic_lang(&mnemonic) {
                 MnemonicLang::Ja => ja_mnemonic_to_en(&mnemonic),
-                _ => mnemonic,
+                MnemonicLang::En => mnemonic,
             };
             println!(
                 "{}",
                 phrase_to_privkey_str(&mnemonic).unwrap_or_else(|e| {
-                    eprintln!("Failed to derive private key from mnemonic: {}", e);
-                    std::process::exit(1);
+                    panic!("Failed to derive private key from mnemonic: {e}");
                 })
-            )
+            );
         }
         SubCommand::PhraseToPubkey { mnemonic } => {
             let mnemonic = match detect_mnemonic_lang(&mnemonic) {
                 MnemonicLang::Ja => ja_mnemonic_to_en(&mnemonic),
-                _ => mnemonic,
+                MnemonicLang::En => mnemonic,
             };
             println!(
                 "{}",
                 phrase_to_pubkey_str(&mnemonic).unwrap_or_else(|e| {
-                    eprintln!("Failed to derive public key from mnemonic: {}", e);
-                    std::process::exit(1);
+                    panic!("Failed to derive public key from mnemonic: {e}");
                 })
-            )
+            );
         }
         SubCommand::PrivkeyToAddress { privkey, subkey } => {
             println!(
                 "{}",
                 privkey_to_address_str(&privkey, subkey).unwrap_or_else(|e| {
-                    eprintln!("Failed to derive CCID from private key: {}", e);
-                    std::process::exit(1);
+                    panic!("Failed to derive CCID from private key: {e}");
                 })
             );
         }
@@ -225,8 +222,7 @@ fn main() {
             println!(
                 "{}",
                 privkey_to_pubkey_str(&privkey).unwrap_or_else(|e| {
-                    eprintln!("Failed to derive public key from private key: {}", e);
-                    std::process::exit(1);
+                    panic!("Failed to derive public key from private key: {e}");
                 })
             );
         }
@@ -234,8 +230,7 @@ fn main() {
             println!(
                 "{}",
                 pubkey_to_address_str(&pubkey, subkey).unwrap_or_else(|e| {
-                    eprintln!("Failed to derive CCID from public key: {}", e);
-                    std::process::exit(1);
+                    panic!("Failed to derive CCID from public key: {e}");
                 })
             );
         }
@@ -249,7 +244,7 @@ fn main() {
                 (MnemonicLang::Ja, MnemonicLang::En) => ja_mnemonic_to_en(&mnemonic),
                 _ => mnemonic,
             };
-            println!("{}", result);
+            println!("{result}");
         }
     }
 }
