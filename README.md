@@ -7,7 +7,7 @@ Tools for working with CCID (used in [concurrent](https://github.com/totegamma/c
 1. Download binary from [Releases](https://github.com/7ka-Hiira/ccid-tools/releases/latest)
 2. Grant Permission
 
-```
+```sh
 $ cd /path/to/your/download/directory
 $ mv <downloaded filename> ccid-tools
 $ chmod +x ./ccid-tools
@@ -15,21 +15,24 @@ $ chmod +x ./ccid-tools
 
 3. Run
 
-```
+```sh
 $ ./ccid-tools <subcommand> <options>
 ```
 
-- Tips: Building and optimizing on your CPU may improve speed
+## Build yourself (May improve performance)
+```sh
+$ git clone https://github.com/7ka-Hiira/ccid-tools.git
+$ cd ccid-tools
+$ RUSTFLAGS="-C target-cpu=native" cargo build --release
+```
+You can find the binary in `./target/release/ccid-tools`
 
-```
-RUSTFLAGS="-C target-cpu=native" cargo build --release
-```
 
 ## Usage
 
 ### Generate an entity
 
-```
+```sh
 $ ./ccid-tools keygen
 ```
 
@@ -41,20 +44,20 @@ Examples
 
 - Generate CCID starts with 12345 and Japanese mnemonic
 
-```
+```sh
 $ ./ccid-tools vanity-search --starts-with 12345 --lang ja
 ```
 
 - Generate CCID containing abcdef (case-sensitive) with 3 threads, stop when one is found
 
-```
+```sh
 $ ./ccid-tools vanity-search --contains abcdef -j3 --stop-when-found --case-sensitive
 ```
 
-- Generate CCID where the 10 characters following the CC and the last 10 characters are numbers
+- Generate CCID where the 10 characters following the 'con' and the last 10 characters are numbers
 
-```
-$ ./ccid-tools vanity-search --regex "^CC\d{10}.*\d{10}$"
+```sh
+$ ./ccid-tools vanity-search --regex "^con\d{10}.*\d{10}$"
 ```
 
 ### Key derivation
@@ -63,13 +66,13 @@ Examples
 
 - Derive privatekey from mnemonics
 
-```
+```sh
 $ ./ccid-tools phrase-to-privkey "return velvet service basket ..."
 ```
 
 - Derive CCID from privatekey
 
-```
+```sh
 $ ./ccid-tools privkey-to-ccid "bcb7710a8cb369bc695e7e200611d501b..."
 ```
 

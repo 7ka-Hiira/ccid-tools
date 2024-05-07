@@ -29,7 +29,7 @@ pub fn lookup(
                 .unwrap_or_else(|e| {
                     panic!("Invalid regex: {e}");
                 });
-            Arc::new(move |a: &str| re.is_match(&a.replace("0x", "CC")))
+            Arc::new(move |a: &str| re.is_match(a))
         }
     };
 
@@ -76,7 +76,7 @@ fn genkey_attempt(
     let mnemonic: Mnemonic<English> = Mnemonic::new(rng);
     let addr = mnemonic_to_addr(&mnemonic).unwrap();
     if matcher(&addr.to_string()) {
-        Some((mnemonic.to_phrase(), addr.to_string().replace("0x", "CC")))
+        Some((mnemonic.to_phrase(), addr.to_string()))
     } else {
         None
     }

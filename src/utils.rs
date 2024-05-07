@@ -1,19 +1,27 @@
-use alloy_primitives::{keccak256, Address};
+use alloy_primitives::{keccak256, Keccak256};
+use bech32::{Bech32, Hrp};
 use coins_bip32::prelude::SigningKey as Bip32SigningKey;
 use coins_bip39::{mnemonic::Mnemonic, English, Japanese, Wordlist};
+use k256::pkcs8::der::asn1::PrintableString;
+use k256::sha2::{Sha256, Sha256VarCore, Sha512_256};
+use sha256::Sha256Digest;
 use core::str::FromStr;
 use k256::ecdsa::{SigningKey, VerifyingKey};
 use k256::elliptic_curve::sec1::ToEncodedPoint;
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
+use ripemd::{Ripemd160, Digest};
 use std::error::Error;
 use unicode_normalization::UnicodeNormalization;
 
 use crate::MnemonicLang;
 
 const DEFAULT_DERIVATION_PATH: &str = "m/44'/60'/0'/0/0";
+const CC_HRP: Hrp = Hrp::parse_unchecked("con");
+
 
 // ジェネリクス使えなさそう
+#[inline]
 pub fn ja_mnemonic_to_en(mnemonic: &str) -> String {
     mnemonic
         .split_whitespace()
@@ -27,6 +35,7 @@ pub fn ja_mnemonic_to_en(mnemonic: &str) -> String {
         .join(" ")
 }
 
+#[inline]
 pub fn en_mnemonic_to_ja(mnemonic: &str) -> String {
     mnemonic
         .split_whitespace()
@@ -40,6 +49,7 @@ pub fn en_mnemonic_to_ja(mnemonic: &str) -> String {
         .join(" ")
 }
 
+#[inline]
 pub fn detect_mnemonic_lang(mnemonic: &str) -> MnemonicLang {
     if mnemonic
         .split_whitespace()
@@ -56,10 +66,12 @@ pub fn detect_mnemonic_lang(mnemonic: &str) -> MnemonicLang {
     }
 }
 
-pub fn mnemonic_to_addr<W: Wordlist>(mnemonic: &Mnemonic<W>) -> Result<Address, Box<dyn Error>> {
+#[inline]
+pub fn mnemonic_to_addr<W: Wordlist>(mnemonic: &Mnemonic<W>) -> Result<String, Box<dyn Error>> {
     privkey_to_addr(&mnemonic_to_privkey(mnemonic)?)
 }
 
+#[inline]
 pub fn mnemonic_to_privkey<W: Wordlist>(
     mnemonic: &Mnemonic<W>,
 ) -> Result<SigningKey, Box<dyn Error>> {
@@ -68,69 +80,83 @@ pub fn mnemonic_to_privkey<W: Wordlist>(
     Ok(SigningKey::from_bytes(&key.to_bytes())?)
 }
 
-pub fn privkey_to_addr(privkey: &SigningKey) -> Result<Address, Box<dyn Error>> {
+#[inline]
+pub fn privkey_to_addr(privkey: &SigningKey) -> Result<String, Box<dyn Error>> {
     pubkey_to_addr(&privkey_to_pubkey(privkey))
 }
 
+#[inline]
 pub fn privkey_to_pubkey(privkey: &SigningKey) -> Vec<u8> {
     privkey.verifying_key().to_sec1_bytes().to_vec()
 }
 
-pub fn pubkey_to_addr(pubkey: &[u8]) -> Result<Address, Box<dyn Error>> {
+#[inline]
+pub fn pubkey_to_addr(pubkey: &[u8]) -> Result<String, Box<dyn Error>> {
     let pubkey = VerifyingKey::from_sec1_bytes(pubkey)?
         .as_ref()
         .to_encoded_point(false);
-    Ok(Address::from_slice(
-        &keccak256(&pubkey.as_bytes()[1..])[12..],
-    ))
+    let pubkey = secp256k1::PublicKey::from_slice(&pubkey.as_bytes()[..])?;
+    let pubkey = pubkey.serialize();
+    // ↑ここまで合ってる
+    let pubkey = sha256::digest(&pubkey);
+    let pubkey = Ripemd160::digest(pubkey);
+    let pubkey = bech32::encode::<Bech32>(CC_HRP, &pubkey)?;
+    Ok(pubkey.to_string())
 }
 
-pub fn phrase_to_ccid_str(mnemonic: &str) -> Result<String, Box<dyn Error>> {
+#[inline]
+pub fn mnemonic_to_ccid_str(mnemonic: &str) -> Result<String, Box<dyn Error>> {
     let mnemonic: Mnemonic<English> = Mnemonic::from_str(mnemonic)?;
-    Ok(mnemonic_to_addr(&mnemonic)?.to_string().replace("0x", "CC"))
+    Ok(mnemonic_to_addr(&mnemonic)?.to_string())
 }
 
-pub fn phrase_to_privkey_str(mnemonic: &str) -> Result<String, Box<dyn Error>> {
+#[inline]
+pub fn mnemonic_to_privkey_str(mnemonic: &str) -> Result<String, Box<dyn Error>> {
     let mnemonic: Mnemonic<English> = Mnemonic::from_str(mnemonic)?;
     Ok(hex::encode(mnemonic_to_privkey(&mnemonic)?.to_bytes()))
 }
 
-pub fn phrase_to_pubkey_str(mnemonic: &str) -> Result<String, Box<dyn Error>> {
+#[inline]
+pub fn mnemonic_to_pubkey_str(mnemonic: &str) -> Result<String, Box<dyn Error>> {
     let mnemonic: Mnemonic<English> = Mnemonic::from_str(mnemonic)?;
     let privkey = mnemonic_to_privkey(&mnemonic)?;
     Ok(hex::encode(privkey_to_pubkey(&privkey)))
 }
 
+#[inline]
 pub fn privkey_to_address_str(privkey: &str, is_subkey: bool) -> Result<String, Box<dyn Error>> {
     let key = SigningKey::from_slice(&hex::decode(privkey)?)?;
-    let addr = privkey_to_addr(&key);
+    let addr = privkey_to_addr(&key, );
     if is_subkey {
-        Ok(addr?.to_string().replace("0x", "CK"))
+        Ok(addr?.to_string().replacen("con", "cck", 1))
     } else {
-        Ok(addr?.to_string().replace("0x", "CC"))
+        Ok(addr?.to_string())
     }
 }
 
+#[inline]
 pub fn privkey_to_pubkey_str(privkey: &str) -> Result<String, Box<dyn Error>> {
     let key = SigningKey::from_slice(&hex::decode(privkey)?)?;
     Ok(hex::encode(privkey_to_pubkey(&key)))
 }
 
+#[inline]
 pub fn pubkey_to_address_str(pubkey: &str, is_subkey: bool) -> Result<String, Box<dyn Error>> {
     let addr = pubkey_to_addr(&hex::decode(pubkey)?);
     if is_subkey {
-        Ok(addr?.to_string().replace("0x", "CK"))
+        Ok(addr?.to_string().replacen("con", "cck", 1))
     } else {
-        Ok(addr?.to_string().replace("0x", "CC"))
+        Ok(addr?.to_string())
     }
 }
 
+#[inline]
 pub fn generate_entity<T: Wordlist>(
     lang: &crate::MnemonicLang,
 ) -> Result<(String, String, String), Box<dyn Error>> {
     let mnemonic = Mnemonic::<T>::new(&mut ChaCha20Rng::from_entropy()).to_phrase();
-    let privkey = phrase_to_privkey_str(&mnemonic)?;
-    let ccid = phrase_to_ccid_str(&mnemonic)?;
+    let privkey = mnemonic_to_privkey_str(&mnemonic)?;
+    let ccid = mnemonic_to_ccid_str(&mnemonic)?;
     let mnemonic = if matches!(lang, crate::MnemonicLang::Ja) {
         en_mnemonic_to_ja(&mnemonic)
     } else {

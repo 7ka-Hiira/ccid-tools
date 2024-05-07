@@ -4,7 +4,7 @@ mod vanity;
 use clap::{Parser, Subcommand, ValueEnum};
 use utils::{
     detect_mnemonic_lang, en_mnemonic_to_ja, generate_entity, ja_mnemonic_to_en,
-    phrase_to_ccid_str, phrase_to_privkey_str, phrase_to_pubkey_str, privkey_to_address_str,
+    mnemonic_to_ccid_str, mnemonic_to_privkey_str, mnemonic_to_pubkey_str, privkey_to_address_str,
     privkey_to_pubkey_str, pubkey_to_address_str,
 };
 
@@ -79,21 +79,22 @@ enum SubCommand {
         #[clap(short, long, value_name = "MNEMONIC_LANG", value_enum, default_value_t = MnemonicLang::En)]
         lang: MnemonicLang,
     },
-    /// Derive a CCID from a mnemonic phrase
-    PhraseToCcid {
-        /// Mnemonic phrase
+    /// Derive a CCID from a mnemonic
+    MnemonicToAddress {
+        /// Mnemonic
+        #[clap(value_name = "MNEMONIC")]
+        mnemonic: String,
+        // (subkey mode is not supported)
+    },
+    /// Derive a private key from a mnemonic
+    MnemonicToPrivkey {
+        /// Mnemonic
         #[clap(value_name = "MNEMONIC")]
         mnemonic: String,
     },
-    /// Derive a private key from a mnemonic phrase
-    PhraseToPrivkey {
-        /// Mnemonic phrase
-        #[clap(value_name = "MNEMONIC")]
-        mnemonic: String,
-    },
-    /// Derive a public key from a mnemonic phrase
-    PhraseToPubkey {
-        /// Mnemonic phrase
+    /// Derive a public key from a mnemonic
+    MnemonicToPubkey {
+        /// Mnemonic
         #[clap(value_name = "MNEMONIC")]
         mnemonic: String,
     },
@@ -121,12 +122,12 @@ enum SubCommand {
         #[clap(long, value_name = "BOOL", default_value_t = false)]
         subkey: bool,
     },
-    /// Translate a mnemonic phrase to another language
-    TranslatePhrase {
+    /// Translate a mnemonic to another language
+    TranslateMnemonic {
         /// Specify the target mnemonic language
         #[clap(value_name = "TARGET_LANG", value_enum, required = true)]
         target_lang: MnemonicLang,
-        /// Mnemonic phrase
+        /// Mnemonic
         #[clap(value_name = "MNEMONIC", required = true)]
         mnemonic: String,
     },
@@ -174,38 +175,38 @@ fn main() {
             };
             vanity::lookup(match_method, threads, stop_when_found, case_sensitive, lang);
         }
-        SubCommand::PhraseToCcid { mnemonic } => {
+        SubCommand::MnemonicToAddress { mnemonic } => {
             let mnemonic = match detect_mnemonic_lang(&mnemonic) {
                 MnemonicLang::Ja => ja_mnemonic_to_en(&mnemonic),
                 MnemonicLang::En => mnemonic,
             };
             println!(
                 "{}",
-                phrase_to_ccid_str(&mnemonic).unwrap_or_else(|e| {
+                mnemonic_to_ccid_str(&mnemonic).unwrap_or_else(|e| {
                     panic!("Failed to derive CCID from mnemonic: {e}");
                 })
             );
         }
-        SubCommand::PhraseToPrivkey { mnemonic } => {
+        SubCommand::MnemonicToPrivkey { mnemonic } => {
             let mnemonic = match detect_mnemonic_lang(&mnemonic) {
                 MnemonicLang::Ja => ja_mnemonic_to_en(&mnemonic),
                 MnemonicLang::En => mnemonic,
             };
             println!(
                 "{}",
-                phrase_to_privkey_str(&mnemonic).unwrap_or_else(|e| {
+                mnemonic_to_privkey_str(&mnemonic).unwrap_or_else(|e| {
                     panic!("Failed to derive private key from mnemonic: {e}");
                 })
             );
         }
-        SubCommand::PhraseToPubkey { mnemonic } => {
+        SubCommand::MnemonicToPubkey { mnemonic } => {
             let mnemonic = match detect_mnemonic_lang(&mnemonic) {
                 MnemonicLang::Ja => ja_mnemonic_to_en(&mnemonic),
                 MnemonicLang::En => mnemonic,
             };
             println!(
                 "{}",
-                phrase_to_pubkey_str(&mnemonic).unwrap_or_else(|e| {
+                mnemonic_to_pubkey_str(&mnemonic).unwrap_or_else(|e| {
                     panic!("Failed to derive public key from mnemonic: {e}");
                 })
             );
@@ -234,7 +235,7 @@ fn main() {
                 })
             );
         }
-        SubCommand::TranslatePhrase {
+        SubCommand::TranslateMnemonic {
             target_lang,
             mnemonic,
         } => {
