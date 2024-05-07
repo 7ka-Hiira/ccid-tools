@@ -13,12 +13,13 @@ use crate::MnemonicLang;
 
 const DEFAULT_DERIVATION_PATH: &str = "m/44'/60'/0'/0/0";
 
+// ジェネリクス使えなさそう
 pub fn ja_mnemonic_to_en(mnemonic: &str) -> String {
     mnemonic
         .split_whitespace()
         .map(|word| {
             Japanese::get_index(&word.nfkd().collect::<String>()).unwrap_or_else(|e| {
-                panic!("Failed to perse Japanese mnemonic into English: {e}");
+                panic!("Failed to parse Japanese mnemonic into English: {e}");
             })
         })
         .map(|index| English::get(index).unwrap().to_owned())
@@ -31,7 +32,7 @@ pub fn en_mnemonic_to_ja(mnemonic: &str) -> String {
         .split_whitespace()
         .map(|word| {
             English::get_index(&word.nfkd().collect::<String>()).unwrap_or_else(|e| {
-                panic!("Failed to perse English mnemonic into Japanese: {e}");
+                panic!("Failed to parse English mnemonic into Japanese: {e}");
             })
         })
         .map(|index| Japanese::get(index).unwrap().to_owned())
