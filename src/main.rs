@@ -177,8 +177,9 @@ fn main() {
         }
         SubCommand::MnemonicToAddress { mnemonic } => {
             let mnemonic = match detect_mnemonic_lang(&mnemonic) {
-                MnemonicLang::Ja => ja_mnemonic_to_en(&mnemonic),
-                MnemonicLang::En => mnemonic,
+                Ok(MnemonicLang::Ja) => ja_mnemonic_to_en(&mnemonic),
+                Ok(MnemonicLang::En) => mnemonic,
+                Err(e) => panic!("Invalid mnemonic: {e}"),
             };
             println!(
                 "{}",
@@ -189,8 +190,9 @@ fn main() {
         }
         SubCommand::MnemonicToPrivkey { mnemonic } => {
             let mnemonic = match detect_mnemonic_lang(&mnemonic) {
-                MnemonicLang::Ja => ja_mnemonic_to_en(&mnemonic),
-                MnemonicLang::En => mnemonic,
+                Ok(MnemonicLang::Ja) => ja_mnemonic_to_en(&mnemonic),
+                Ok(MnemonicLang::En) => mnemonic,
+                Err(e) => panic!("Invalid mnemonic: {e}"),
             };
             println!(
                 "{}",
@@ -201,8 +203,9 @@ fn main() {
         }
         SubCommand::MnemonicToPubkey { mnemonic } => {
             let mnemonic = match detect_mnemonic_lang(&mnemonic) {
-                MnemonicLang::Ja => ja_mnemonic_to_en(&mnemonic),
-                MnemonicLang::En => mnemonic,
+                Ok(MnemonicLang::Ja) => ja_mnemonic_to_en(&mnemonic),
+                Ok(MnemonicLang::En) => mnemonic,
+                Err(e) => panic!("Invalid mnemonic: {e}"),
             };
             println!(
                 "{}",
@@ -239,7 +242,9 @@ fn main() {
             target_lang,
             mnemonic,
         } => {
-            let source_lang = detect_mnemonic_lang(&mnemonic);
+            let source_lang = detect_mnemonic_lang(&mnemonic).unwrap_or_else(|e| {
+                panic!("Invalid mnemonic: {e}");
+            });
             let result = match (source_lang, target_lang) {
                 (MnemonicLang::En, MnemonicLang::Ja) => en_mnemonic_to_ja(&mnemonic),
                 (MnemonicLang::Ja, MnemonicLang::En) => ja_mnemonic_to_en(&mnemonic),

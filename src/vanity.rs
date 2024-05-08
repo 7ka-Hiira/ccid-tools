@@ -85,12 +85,15 @@ fn genkey_attempt(
 fn validate_and_normalize_method(method: MatchMethod, case_sensitive: bool) -> MatchMethod {
     match &method {
         StartsWith(text) | EndsWith(text) | Contains(text) => {
-            if !text.to_uppercase().chars().all(|c| c.is_ascii_hexdigit()) {
-                panic!("CCID must be a HEX (0-9, A-F) string");
-            }
-            if text.len() > 40 {
-                panic!("Max CCID length is 40 excluding 'CC' prefix");
-            }
+            let bech32regex = regex::Regex::new(r"^[qpzry9x8gf2tvdw0s3jn54khce6mua7l]{1,38}$").unwrap();
+            assert!(
+                !bech32regex.is_match(text),
+                "Invalid bech32 character. Bech32 characters are 'qpzry9x8gf2tvdw0s3jn54khce6mua7l'"
+            );
+            assert!(
+                text.len() > 38,
+                "CCID length is 38 excluding 'con1' prefix"
+            );
             if case_sensitive {
                 match &method {
                     StartsWith(_) => StartsWith(format!("0x{text}")),

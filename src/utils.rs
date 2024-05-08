@@ -1,22 +1,18 @@
-use alloy_primitives::{keccak256, Keccak256};
 use bech32::{Bech32, Hrp};
 use coins_bip32::prelude::SigningKey as Bip32SigningKey;
 use coins_bip39::{mnemonic::Mnemonic, English, Japanese, Wordlist};
-use k256::pkcs8::der::asn1::PrintableString;
-use k256::sha2::{Sha256, Sha256VarCore, Sha512_256};
-use sha256::Sha256Digest;
 use core::str::FromStr;
 use k256::ecdsa::{SigningKey, VerifyingKey};
 use k256::elliptic_curve::sec1::ToEncodedPoint;
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
-use ripemd::{Ripemd160, Digest};
+use ripemd::{Digest, Ripemd160};
 use std::error::Error;
 use unicode_normalization::UnicodeNormalization;
 
 use crate::MnemonicLang;
 
-const DEFAULT_DERIVATION_PATH: &str = "m/44'/60'/0'/0/0";
+const DEFAULT_DERIVATION_PATH: &str = "m/44'/118'/0'/0/0";
 const CC_HRP: Hrp = Hrp::parse_unchecked("con");
 
 
@@ -50,19 +46,19 @@ pub fn en_mnemonic_to_ja(mnemonic: &str) -> String {
 }
 
 #[inline]
-pub fn detect_mnemonic_lang(mnemonic: &str) -> MnemonicLang {
+pub fn detect_mnemonic_lang(mnemonic: &str) -> Result<MnemonicLang, Box<dyn Error>> {
     if mnemonic
         .split_whitespace()
         .all(|word| Japanese::get_index(&word.nfkd().collect::<String>()).is_ok())
     {
-        crate::MnemonicLang::Ja
+        Ok(MnemonicLang::Ja)
     } else if mnemonic
         .split_whitespace()
         .all(|word| English::get_index(&word.nfkd().collect::<String>()).is_ok())
     {
-        MnemonicLang::En
+        Ok(MnemonicLang::En)
     } else {
-        panic!("Invalid mnemonic: {mnemonic}");
+        Err("Invalid mnemonic".into())
     }
 }
 
@@ -95,10 +91,11 @@ pub fn pubkey_to_addr(pubkey: &[u8]) -> Result<String, Box<dyn Error>> {
     let pubkey = VerifyingKey::from_sec1_bytes(pubkey)?
         .as_ref()
         .to_encoded_point(false);
-    let pubkey = secp256k1::PublicKey::from_slice(&pubkey.as_bytes()[..])?;
+    let pubkey = secp256k1::PublicKey::from_slice(pubkey.as_bytes())?;
     let pubkey = pubkey.serialize();
-    // ↑ここまで合ってる
-    let pubkey = sha256::digest(&pubkey);
+    let mut sha256hasher = sha2::Sha256::new();
+    sha256hasher.update(pubkey);
+    let pubkey = sha256hasher.finalize();
     let pubkey = Ripemd160::digest(pubkey);
     let pubkey = bech32::encode::<Bech32>(CC_HRP, &pubkey)?;
     Ok(pubkey.to_string())
@@ -126,7 +123,7 @@ pub fn mnemonic_to_pubkey_str(mnemonic: &str) -> Result<String, Box<dyn Error>> 
 #[inline]
 pub fn privkey_to_address_str(privkey: &str, is_subkey: bool) -> Result<String, Box<dyn Error>> {
     let key = SigningKey::from_slice(&hex::decode(privkey)?)?;
-    let addr = privkey_to_addr(&key, );
+    let addr = privkey_to_addr(&key);
     if is_subkey {
         Ok(addr?.to_string().replacen("con", "cck", 1))
     } else {
