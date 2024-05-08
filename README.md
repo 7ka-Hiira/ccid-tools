@@ -46,19 +46,19 @@ Examples
 - Generate CCID starts with 12345 and Japanese mnemonic
 
 ```sh
-$ ./ccid-tools vanity-search --starts-with 12345 --lang ja
+$ ./ccid-tools vanity-search --starts-with 2345 --lang ja
 ```
 
 - Generate CCID containing abcdef (case-sensitive) with 3 threads, stop when one is found
 
 ```sh
-$ ./ccid-tools vanity-search --contains abcdef -j3 --stop-when-found --case-sensitive
+$ ./ccid-tools vanity-search --contains xyz -j3 --stop-when-found --case-sensitive
 ```
 
-- Generate CCID where the 10 characters following the 'con1' and the last 10 characters are numbers
+- Generate CCID where the 5 characters following the 'con1' and the last 5 characters are numbers
 
 ```sh
-$ ./ccid-tools vanity-search --regex "^con1\d{10}.*\d{10}$"
+$ ./ccid-tools vanity-search --regex "^con1\d{5}.*\d{5}$"
 ```
 
 ### Key derivation
@@ -68,13 +68,13 @@ Examples
 - Derive privatekey from mnemonics
 
 ```sh
-$ ./ccid-tools phrase-to-privkey "return velvet service basket ..."
+$ ./ccid-tools mnemonic-to-privkey "return velvet service basket ..."
 ```
 
 - Derive CCID from privatekey
 
 ```sh
-$ ./ccid-tools privkey-to-ccid "bcb7710a8cb369bc695e7e200611d501b..."
+$ ./ccid-tools privkey-to-address "bcb7710a8cb369bc695e7e200611d501b..."
 ```
 
 ## Contributing
