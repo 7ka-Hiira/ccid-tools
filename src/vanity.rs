@@ -2,13 +2,12 @@ use coins_bip39::{wordlist::English, Mnemonic};
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
 use regex::RegexBuilder;
+use std::sync::atomic::AtomicU64;
 use std::{sync::Arc, thread};
 
-use crate::utils::{en_mnemonic_to_ja, mnemonic_to_addr_unchecked};
+use crate::utils::{mnemonic_to_addr_fast, translate_mnemonic};
 use crate::MatchMethod::{self, Contains, EndsWith, Regex, StartsWith};
 
-// ゆるして
-static mut COUNT: u64 = 0;
 const PRINT_COUNT: u64 = 50000;
 
 pub fn lookup(
@@ -40,11 +39,14 @@ pub fn lookup(
     let threads_num = threads.unwrap_or(num_cpus::get()).max(1);
     println!("Searching using {threads_num} threads");
 
+    let counter = Arc::new(AtomicU64::new(0));
+
     let mut handles = vec![];
     for _ in 0..threads_num {
         let matcher = Arc::clone(&matcher);
+        let counter = Arc::clone(&counter);
         let handle = thread::spawn(move || {
-            worker(&matcher, stop_when_found, lang);
+            worker(&matcher, stop_when_found, lang, &counter);
         });
         handles.push(handle);
     }
@@ -55,21 +57,16 @@ fn worker(
     matcher: &Arc<dyn Fn(&str) -> bool + Send + Sync>,
     stop_when_found: bool,
     lang: crate::MnemonicLang,
+    counter: &AtomicU64,
 ) {
     let mut rng = ChaCha20Rng::from_entropy();
     loop {
-        unsafe {
-            COUNT += 1;
-            if COUNT % PRINT_COUNT == 0 {
-                println!("Attempts: {}", COUNT);
-            }
+        let count = counter.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        if count % PRINT_COUNT == 0 {
+            println!("Attempt: {count}");
         }
         if let Some((mnemonic, addr)) = genkey_attempt(matcher, &mut rng) {
-            let mnemonic = if matches!(lang, crate::MnemonicLang::Ja) {
-                en_mnemonic_to_ja(&mnemonic)
-            } else {
-                mnemonic
-            };
+            let mnemonic = translate_mnemonic(&mnemonic, lang);
             println!("Mnemonic: {mnemonic}\nAddress: {addr}\n");
             if stop_when_found {
                 std::process::exit(0);
@@ -84,7 +81,7 @@ fn genkey_attempt(
     rng: &mut rand_chacha::ChaCha20Rng,
 ) -> Option<(String, String)> {
     let mnemonic: Mnemonic<English> = Mnemonic::new(rng);
-    let addr = mnemonic_to_addr_unchecked(&mnemonic);
+    let addr = mnemonic_to_addr_fast(&mnemonic);
     if matcher(&addr.to_string()) {
         Some((mnemonic.to_phrase(), addr.to_string()))
     } else {
@@ -95,7 +92,8 @@ fn genkey_attempt(
 fn validate_and_normalize_method(method: MatchMethod, case_sensitive: bool) -> MatchMethod {
     match &method {
         StartsWith(text) | EndsWith(text) | Contains(text) => {
-            let bech32regex = regex::Regex::new(r"^[qpzry9x8gf2tvdw0s3jn54khce6mua7l]{1,38}$").unwrap();
+            let bech32regex =
+                regex::Regex::new(r"^[qpzry9x8gf2tvdw0s3jn54khce6mua7l]{1,38}$").unwrap();
             assert!(
                 bech32regex.is_match(text),
                 "Invalid bech32 character or length. Bech32 characters are 'qpzry9x8gf2tvdw0s3jn54khce6mua7l'"
@@ -117,4 +115,3 @@ fn validate_and_normalize_method(method: MatchMethod, case_sensitive: bool) -> M
         Regex(_) => method,
     }
 }
-

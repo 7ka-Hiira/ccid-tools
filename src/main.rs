@@ -2,10 +2,10 @@ pub mod utils;
 mod vanity;
 
 use clap::{Parser, Subcommand, ValueEnum};
+use coins_bip39::{English, Japanese, Wordlist};
 use utils::{
-    detect_mnemonic_lang, en_mnemonic_to_ja, generate_entity, ja_mnemonic_to_en,
-    mnemonic_to_address_str, mnemonic_to_privkey_str, mnemonic_to_pubkey_str, privkey_to_address_str,
-    privkey_to_pubkey_str, pubkey_to_address_str,
+    generate_entity, mnemonic_to_address_str, mnemonic_to_privkey_str, mnemonic_to_pubkey_str,
+    privkey_to_address_str, privkey_to_pubkey_str, pubkey_to_address_str, translate_mnemonic,
 };
 
 #[derive(Parser)]
@@ -19,10 +19,19 @@ struct Arg {
     subcommand: SubCommand,
 }
 
-#[derive(Clone, Copy, ValueEnum)]
+#[derive(Clone, Copy, PartialEq, ValueEnum)]
 pub enum MnemonicLang {
     En,
     Ja,
+}
+
+impl MnemonicLang {
+    fn to_words(self) -> &'static [&'static str] {
+        match self {
+            MnemonicLang::En => English::get_all(),
+            MnemonicLang::Ja => Japanese::get_all(),
+        }
+    }
 }
 
 // Parse into Enum MatchMethod
@@ -46,6 +55,31 @@ struct MatchMethodStruct {
     /// Find addresses that matches this regex (including 'CC' prefixs)
     #[clap(short, long, value_name = "REGEX")]
     regex: Option<String>,
+}
+
+impl MatchMethodStruct {
+    fn into_matchmethod(self) -> MatchMethod {
+        match self {
+            MatchMethodStruct {
+                starts_with: Some(starts_with),
+                ..
+            } => MatchMethod::StartsWith(starts_with),
+            MatchMethodStruct {
+                ends_with: Some(ends_with),
+                ..
+            } => MatchMethod::EndsWith(ends_with),
+            MatchMethodStruct {
+                contains: Some(contains),
+                ..
+            } => MatchMethod::Contains(contains),
+            MatchMethodStruct {
+                regex: Some(regex), ..
+            } => MatchMethod::Regex(regex),
+            _ => {
+                panic!("Invalid match method");
+            }
+        }
+    }
 }
 enum MatchMethod {
     StartsWith(String),
@@ -137,7 +171,7 @@ fn main() {
     let args = Arg::parse();
     match args.subcommand {
         SubCommand::Keygen { lang } => {
-            let entity = generate_entity::<coins_bip39::English>(&lang).unwrap_or_else(|e| {
+            let entity = generate_entity::<coins_bip39::English>(lang).unwrap_or_else(|e| {
                 panic!("Failed to generate entity: {e}");
             });
             println!(
@@ -152,35 +186,11 @@ fn main() {
             case_sensitive,
             lang,
         } => {
-            // Parse MatchMethodStruct to MatchMethod
-            let match_method = match match_method {
-                MatchMethodStruct {
-                    starts_with: Some(starts_with),
-                    ..
-                } => MatchMethod::StartsWith(starts_with),
-                MatchMethodStruct {
-                    ends_with: Some(ends_with),
-                    ..
-                } => MatchMethod::EndsWith(ends_with),
-                MatchMethodStruct {
-                    contains: Some(contains),
-                    ..
-                } => MatchMethod::Contains(contains),
-                MatchMethodStruct {
-                    regex: Some(regex), ..
-                } => MatchMethod::Regex(regex),
-                _ => {
-                    panic!("Invalid match method");
-                }
-            };
+            let match_method = match_method.into_matchmethod();
             vanity::lookup(match_method, threads, stop_when_found, case_sensitive, lang);
         }
         SubCommand::MnemonicToAddress { mnemonic } => {
-            let mnemonic = match detect_mnemonic_lang(&mnemonic) {
-                Ok(MnemonicLang::Ja) => ja_mnemonic_to_en(&mnemonic),
-                Ok(MnemonicLang::En) => mnemonic,
-                Err(e) => panic!("Invalid mnemonic: {e}"),
-            };
+            let mnemonic = translate_mnemonic(&mnemonic, MnemonicLang::En);
             println!(
                 "{}",
                 mnemonic_to_address_str(&mnemonic).unwrap_or_else(|e| {
@@ -189,11 +199,7 @@ fn main() {
             );
         }
         SubCommand::MnemonicToPrivkey { mnemonic } => {
-            let mnemonic = match detect_mnemonic_lang(&mnemonic) {
-                Ok(MnemonicLang::Ja) => ja_mnemonic_to_en(&mnemonic),
-                Ok(MnemonicLang::En) => mnemonic,
-                Err(e) => panic!("Invalid mnemonic: {e}"),
-            };
+            let mnemonic = translate_mnemonic(&mnemonic, MnemonicLang::En);
             println!(
                 "{}",
                 mnemonic_to_privkey_str(&mnemonic).unwrap_or_else(|e| {
@@ -202,11 +208,7 @@ fn main() {
             );
         }
         SubCommand::MnemonicToPubkey { mnemonic } => {
-            let mnemonic = match detect_mnemonic_lang(&mnemonic) {
-                Ok(MnemonicLang::Ja) => ja_mnemonic_to_en(&mnemonic),
-                Ok(MnemonicLang::En) => mnemonic,
-                Err(e) => panic!("Invalid mnemonic: {e}"),
-            };
+            let mnemonic = translate_mnemonic(&mnemonic, MnemonicLang::En);
             println!(
                 "{}",
                 mnemonic_to_pubkey_str(&mnemonic).unwrap_or_else(|e| {
@@ -242,14 +244,7 @@ fn main() {
             target_lang,
             mnemonic,
         } => {
-            let source_lang = detect_mnemonic_lang(&mnemonic).unwrap_or_else(|e| {
-                panic!("Invalid mnemonic: {e}");
-            });
-            let result = match (source_lang, target_lang) {
-                (MnemonicLang::En, MnemonicLang::Ja) => en_mnemonic_to_ja(&mnemonic),
-                (MnemonicLang::Ja, MnemonicLang::En) => ja_mnemonic_to_en(&mnemonic),
-                _ => mnemonic,
-            };
+            let result = translate_mnemonic(&mnemonic, target_lang);
             println!("{result}");
         }
     }

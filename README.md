@@ -1,6 +1,6 @@
 # CCID Tools
 
-Tools for working with CCID (used in [concurrent](https://github.com/totegamma/concurrent))
+A [Concurrent](https://github.com/totegamma/concurrent) CCID management tool.
 
 ## Installation (Linux)
 
@@ -85,12 +85,17 @@ New features, bug reports/fixes, and improvements are welcome:)
 
 Apache 2.0
 
-## Thanks
+## Acknowledgements
 
-- [Alloy](https://github.com/alloy-rs/alloy/)
-- [coins](https://github.com/summa-tx/coins)
-- [num_cpus](https://github.com/seanmonstar/num_cpus)
-- [Rand](https://github.com/rust-random/rand)
-- [Rust](https://github.com/rust-lang)
-
-And lots of related stuff!
+[clap](https://github.com/clap-rs/clap)
+[coins](https://github.com/summa-tx/coins)
+[concurrent-client](https://github.com/totegamma/concurrent-client)
+[elliptic-curves](https://github.com/RustCrypto/elliptic-curves)
+[num_cpus](https://github.com/seanmonstar/num_cpus)
+[rand](https://github.com/rust-random/rand)
+[regex](https://github.com/rust-lang/regex)
+[RustCrypto: Hashes](https://github.com/RustCrypto/hashes)
+[rust-bech32](https://github.com/rust-bitcoin/rust-bech32)
+[rust-hex](https://github.com/KokaKiwi/rust-hex)
+[rust-secp256k1](https://github.com/rust-bitcoin/rust-secp256k1)
+[unicode-normalization](https://github.com/unicode-rs/unicode-normalization)

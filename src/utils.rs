@@ -15,38 +15,29 @@ use crate::MnemonicLang;
 const DEFAULT_DERIVATION_PATH: &str = "m/44'/118'/0'/0/0";
 const CC_HRP: Hrp = Hrp::parse_unchecked("con");
 
-
-// ジェネリクス使えなさそう
 #[inline]
-pub fn ja_mnemonic_to_en(mnemonic: &str) -> String {
+pub fn translate_mnemonic(mnemonic: &str, target_mnemonic_lang: MnemonicLang) -> String {
+    let source_word_list = detect_mnemonic_lang(mnemonic).unwrap();
+    if source_word_list == target_mnemonic_lang {
+        return mnemonic.to_string();
+    }
     mnemonic
         .split_whitespace()
         .map(|word| {
-            Japanese::get_index(&word.nfkd().collect::<String>()).unwrap_or_else(|e| {
-                panic!("Failed to parse Japanese mnemonic into English: {e}");
-            })
+            source_word_list
+                .to_words()
+                .binary_search(&word.nfkd().collect::<String>().as_str())
+                .unwrap_or_else(|e| {
+                    panic!("Failed to parse mnemonic: {e}");
+                })
         })
-        .map(|index| English::get(index).unwrap().to_owned())
+        .map(|index| target_mnemonic_lang.to_words()[index].to_owned())
         .collect::<Vec<String>>()
         .join(" ")
 }
 
 #[inline]
-pub fn en_mnemonic_to_ja(mnemonic: &str) -> String {
-    mnemonic
-        .split_whitespace()
-        .map(|word| {
-            English::get_index(&word.nfkd().collect::<String>()).unwrap_or_else(|e| {
-                panic!("Failed to parse English mnemonic into Japanese: {e}");
-            })
-        })
-        .map(|index| Japanese::get(index).unwrap().to_owned())
-        .collect::<Vec<String>>()
-        .join(" ")
-}
-
-#[inline]
-pub fn detect_mnemonic_lang(mnemonic: &str) -> Result<MnemonicLang, Box<dyn Error>> {
+fn detect_mnemonic_lang(mnemonic: &str) -> Result<MnemonicLang, Box<dyn Error>> {
     if mnemonic
         .split_whitespace()
         .all(|word| Japanese::get_index(&word.nfkd().collect::<String>()).is_ok())
@@ -100,20 +91,20 @@ pub fn pubkey_to_addr(pubkey: &[u8]) -> Result<String, Box<dyn Error>> {
 }
 
 #[inline]
-pub fn mnemonic_to_address_str(mnemonic: &str) -> Result<String, Box<dyn Error>> {
-    let mnemonic: Mnemonic<English> = Mnemonic::from_str(mnemonic)?;
+pub fn mnemonic_to_address_str(mnemonic_en: &str) -> Result<String, Box<dyn Error>> {
+    let mnemonic: Mnemonic<English> = Mnemonic::from_str(mnemonic_en)?;
     Ok(mnemonic_to_addr(&mnemonic)?.to_string())
 }
 
 #[inline]
-pub fn mnemonic_to_privkey_str(mnemonic: &str) -> Result<String, Box<dyn Error>> {
-    let mnemonic: Mnemonic<English> = Mnemonic::from_str(mnemonic)?;
+pub fn mnemonic_to_privkey_str(mnemonic_en: &str) -> Result<String, Box<dyn Error>> {
+    let mnemonic: Mnemonic<English> = Mnemonic::from_str(mnemonic_en)?;
     Ok(hex::encode(mnemonic_to_privkey(&mnemonic)?.to_bytes()))
 }
 
 #[inline]
-pub fn mnemonic_to_pubkey_str(mnemonic: &str) -> Result<String, Box<dyn Error>> {
-    let mnemonic: Mnemonic<English> = Mnemonic::from_str(mnemonic)?;
+pub fn mnemonic_to_pubkey_str(mnemonic_en: &str) -> Result<String, Box<dyn Error>> {
+    let mnemonic: Mnemonic<English> = Mnemonic::from_str(mnemonic_en)?;
     let privkey = mnemonic_to_privkey(&mnemonic)?;
     Ok(hex::encode(privkey_to_pubkey(&privkey)))
 }
@@ -147,28 +138,108 @@ pub fn pubkey_to_address_str(pubkey: &str, is_subkey: bool) -> Result<String, Bo
 
 #[inline]
 pub fn generate_entity<T: Wordlist>(
-    lang: &crate::MnemonicLang,
+    lang: crate::MnemonicLang,
 ) -> Result<(String, String, String), Box<dyn Error>> {
     let mnemonic = Mnemonic::<T>::new(&mut ChaCha20Rng::from_entropy()).to_phrase();
     let privkey = mnemonic_to_privkey_str(&mnemonic)?;
     let ccid = mnemonic_to_address_str(&mnemonic)?;
     let mnemonic = if matches!(lang, crate::MnemonicLang::Ja) {
-        en_mnemonic_to_ja(&mnemonic)
+        translate_mnemonic(&mnemonic, lang)
     } else {
         mnemonic
     };
     Ok((mnemonic, privkey, ccid))
 }
 
-
-// was unsafe
 #[inline]
-pub fn mnemonic_to_addr_unchecked<W: Wordlist>(mnemonic: &Mnemonic<W>) -> String {
+pub fn mnemonic_to_addr_fast<W: Wordlist>(mnemonic: &Mnemonic<W>) -> String {
     let privkey = mnemonic.derive_key(DEFAULT_DERIVATION_PATH, None).unwrap();
     let privkey: &Bip32SigningKey = privkey.as_ref();
-    let pubkey = secp256k1::PublicKey::from_slice(SigningKey::from_bytes(&privkey.to_bytes()).unwrap().verifying_key().as_ref().to_encoded_point(false).as_bytes()).unwrap().serialize();
+    let pubkey = secp256k1::PublicKey::from_slice(
+        SigningKey::from_bytes(&privkey.to_bytes())
+            .unwrap()
+            .verifying_key()
+            .as_ref()
+            .to_encoded_point(false)
+            .as_bytes(),
+    )
+    .unwrap()
+    .serialize();
     let mut sha256hasher = sha2::Sha256::new();
     sha256hasher.update(pubkey);
-    let pubkey = bech32::encode::<Bech32>(CC_HRP, &Ripemd160::digest(sha256hasher.finalize())).unwrap();
+    let pubkey =
+        bech32::encode::<Bech32>(CC_HRP, &Ripemd160::digest(sha256hasher.finalize())).unwrap();
     pubkey.to_string()
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+
+    // test wallet
+    const MNEMONIC_EN_STR: &str =
+        "maximum talk hill differ mouse happy practice rocket earth theme manual match";
+    const MNEMONIC_JA_STR: &str = "たこやき ほしつ しょっけん くなん たんてい しゃけん とない ねんど けとばす まかい たいやき たかい";
+    const PRIVKEY: &str = "aa9063661ab20513c65c39f80575fa2306e51a45c2c51e57ab485771fd4b8d1a";
+    const PUBKEY: &str = "033baddf65aabd9e341976d9cade07d24382857195bbe20c3ee826a041420535ba";
+    const ADDRESS: &str = "con1test0zagl292e2xdnzfy2u6ggr46rm7k3a06p7";
+
+    #[test]
+    fn test_translate_mnemonic() {
+        let translated = translate_mnemonic(MNEMONIC_EN_STR, MnemonicLang::Ja);
+        assert_eq!(translated, MNEMONIC_JA_STR);
+    }
+
+    #[test]
+    fn test_mnemonic_to_address_str() {
+        let address = mnemonic_to_address_str(MNEMONIC_EN_STR).unwrap();
+        assert_eq!(address, ADDRESS);
+    }
+
+    #[test]
+    fn test_mnemonic_to_privkey_str() {
+        let privkey = mnemonic_to_privkey_str(MNEMONIC_EN_STR).unwrap();
+        assert_eq!(privkey, PRIVKEY);
+    }
+
+    #[test]
+    fn test_mnemonic_to_pubkey_str() {
+        let pubkey = mnemonic_to_pubkey_str(MNEMONIC_EN_STR).unwrap();
+        assert_eq!(pubkey, PUBKEY);
+    }
+
+    #[test]
+    fn test_privkey_to_address_str() {
+        let address = privkey_to_address_str(PRIVKEY, false).unwrap();
+        assert_eq!(address, ADDRESS);
+    }
+
+    #[test]
+    fn test_privkey_to_pubkey_str() {
+        let pubkey = privkey_to_pubkey_str(PRIVKEY).unwrap();
+        assert_eq!(pubkey, PUBKEY);
+    }
+
+    #[test]
+    fn test_pubkey_to_address_str() {
+        let address = pubkey_to_address_str(PUBKEY, false).unwrap();
+        assert_eq!(address, ADDRESS);
+    }
+
+    #[test]
+    fn test_generate_entity() {
+        let (mnemonic, privkey, address) = generate_entity::<English>(MnemonicLang::En).unwrap();
+        assert_eq!(mnemonic.split_whitespace().count(), 12);
+        assert!(address.starts_with("con1"));
+        assert_eq!(privkey.len(), 64);
+        assert_eq!(address.len(), 42);
+    }
+
+    #[test]
+    fn test_mnemonic_to_addr_fast() {
+        let mnemonic: Mnemonic<English> = Mnemonic::from_str(MNEMONIC_EN_STR).unwrap();
+        let address = mnemonic_to_addr_fast(&mnemonic);
+        assert_eq!(address, ADDRESS);
+    }
 }
