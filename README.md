@@ -19,7 +19,8 @@ $ chmod +x ./ccid-tools
 $ ./ccid-tools <subcommand> <options>
 ```
 
-## Build yourself (May improve performance)
+## Build yourself
+official build doesn't work on some old CPUs, so you may need to build it yourself.
 ```sh
 $ git clone https://github.com/7ka-Hiira/ccid-tools.git
 $ cd ccid-tools
