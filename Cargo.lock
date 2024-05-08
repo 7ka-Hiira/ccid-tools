@@ -347,7 +347,7 @@ checksum = "099a5357d84c4c61eb35fc8eafa9a79a902c2f76911e5747ced4e032edd8d9b4"
 
 [[package]]
 name = "ccid-tools"
-version = "0.2.4"
+version = "0.3.0"
 dependencies = [
  "alloy-primitives",
  "bech32 0.11.0",

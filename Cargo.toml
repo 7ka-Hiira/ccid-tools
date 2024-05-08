@@ -1,6 +1,6 @@
 [package]
 name = "ccid-tools"
-version = "0.2.4"
+version = "0.3.0"
 edition = "2021"
 repository = "https://github.com/7ka-Hiira/ccid-tools"
 description = "Tools for working with CCID"
