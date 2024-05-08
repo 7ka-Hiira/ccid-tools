@@ -55,10 +55,10 @@ $ ./ccid-tools vanity-search --starts-with 12345 --lang ja
 $ ./ccid-tools vanity-search --contains abcdef -j3 --stop-when-found --case-sensitive
 ```
 
-- Generate CCID where the 10 characters following the 'con' and the last 10 characters are numbers
+- Generate CCID where the 10 characters following the 'con1' and the last 10 characters are numbers
 
 ```sh
-$ ./ccid-tools vanity-search --regex "^con\d{10}.*\d{10}$"
+$ ./ccid-tools vanity-search --regex "^con1\d{10}.*\d{10}$"
 ```
 
 ### Key derivation
