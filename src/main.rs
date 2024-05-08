@@ -4,7 +4,7 @@ mod vanity;
 use clap::{Parser, Subcommand, ValueEnum};
 use utils::{
     detect_mnemonic_lang, en_mnemonic_to_ja, generate_entity, ja_mnemonic_to_en,
-    mnemonic_to_ccid_str, mnemonic_to_privkey_str, mnemonic_to_pubkey_str, privkey_to_address_str,
+    mnemonic_to_address_str, mnemonic_to_privkey_str, mnemonic_to_pubkey_str, privkey_to_address_str,
     privkey_to_pubkey_str, pubkey_to_address_str,
 };
 
@@ -183,7 +183,7 @@ fn main() {
             };
             println!(
                 "{}",
-                mnemonic_to_ccid_str(&mnemonic).unwrap_or_else(|e| {
+                mnemonic_to_address_str(&mnemonic).unwrap_or_else(|e| {
                     panic!("Failed to derive CCID from mnemonic: {e}");
                 })
             );

@@ -91,18 +91,16 @@ pub fn pubkey_to_addr(pubkey: &[u8]) -> Result<String, Box<dyn Error>> {
     let pubkey = VerifyingKey::from_sec1_bytes(pubkey)?
         .as_ref()
         .to_encoded_point(false);
-    let pubkey = secp256k1::PublicKey::from_slice(pubkey.as_bytes())?;
-    let pubkey = pubkey.serialize();
+    let pubkey = secp256k1::PublicKey::from_slice(pubkey.as_bytes())?.serialize();
     let mut sha256hasher = sha2::Sha256::new();
     sha256hasher.update(pubkey);
-    let pubkey = sha256hasher.finalize();
-    let pubkey = Ripemd160::digest(pubkey);
+    let pubkey = Ripemd160::digest(sha256hasher.finalize());
     let pubkey = bech32::encode::<Bech32>(CC_HRP, &pubkey)?;
     Ok(pubkey.to_string())
 }
 
 #[inline]
-pub fn mnemonic_to_ccid_str(mnemonic: &str) -> Result<String, Box<dyn Error>> {
+pub fn mnemonic_to_address_str(mnemonic: &str) -> Result<String, Box<dyn Error>> {
     let mnemonic: Mnemonic<English> = Mnemonic::from_str(mnemonic)?;
     Ok(mnemonic_to_addr(&mnemonic)?.to_string())
 }
@@ -153,11 +151,24 @@ pub fn generate_entity<T: Wordlist>(
 ) -> Result<(String, String, String), Box<dyn Error>> {
     let mnemonic = Mnemonic::<T>::new(&mut ChaCha20Rng::from_entropy()).to_phrase();
     let privkey = mnemonic_to_privkey_str(&mnemonic)?;
-    let ccid = mnemonic_to_ccid_str(&mnemonic)?;
+    let ccid = mnemonic_to_address_str(&mnemonic)?;
     let mnemonic = if matches!(lang, crate::MnemonicLang::Ja) {
         en_mnemonic_to_ja(&mnemonic)
     } else {
         mnemonic
     };
     Ok((mnemonic, privkey, ccid))
+}
+
+
+// was unsafe
+#[inline]
+pub fn mnemonic_to_addr_unchecked<W: Wordlist>(mnemonic: &Mnemonic<W>) -> String {
+    let privkey = mnemonic.derive_key(DEFAULT_DERIVATION_PATH, None).unwrap();
+    let privkey: &Bip32SigningKey = privkey.as_ref();
+    let pubkey = secp256k1::PublicKey::from_slice(SigningKey::from_bytes(&privkey.to_bytes()).unwrap().verifying_key().as_ref().to_encoded_point(false).as_bytes()).unwrap().serialize();
+    let mut sha256hasher = sha2::Sha256::new();
+    sha256hasher.update(pubkey);
+    let pubkey = bech32::encode::<Bech32>(CC_HRP, &Ripemd160::digest(sha256hasher.finalize())).unwrap();
+    pubkey.to_string()
 }

@@ -4,8 +4,12 @@ use rand_chacha::ChaCha20Rng;
 use regex::RegexBuilder;
 use std::{sync::Arc, thread};
 
-use crate::utils::{en_mnemonic_to_ja, mnemonic_to_addr};
+use crate::utils::{en_mnemonic_to_ja, mnemonic_to_addr_unchecked};
 use crate::MatchMethod::{self, Contains, EndsWith, Regex, StartsWith};
+
+// ゆるして
+static mut COUNT: u64 = 0;
+const PRINT_COUNT: u64 = 50000;
 
 pub fn lookup(
     method: MatchMethod,
@@ -54,6 +58,12 @@ fn worker(
 ) {
     let mut rng = ChaCha20Rng::from_entropy();
     loop {
+        unsafe {
+            COUNT += 1;
+            if COUNT % PRINT_COUNT == 0 {
+                println!("Attempts: {}", COUNT);
+            }
+        }
         if let Some((mnemonic, addr)) = genkey_attempt(matcher, &mut rng) {
             let mnemonic = if matches!(lang, crate::MnemonicLang::Ja) {
                 en_mnemonic_to_ja(&mnemonic)
@@ -74,7 +84,7 @@ fn genkey_attempt(
     rng: &mut rand_chacha::ChaCha20Rng,
 ) -> Option<(String, String)> {
     let mnemonic: Mnemonic<English> = Mnemonic::new(rng);
-    let addr = mnemonic_to_addr(&mnemonic).unwrap();
+    let addr = mnemonic_to_addr_unchecked(&mnemonic);
     if matcher(&addr.to_string()) {
         Some((mnemonic.to_phrase(), addr.to_string()))
     } else {
@@ -87,21 +97,17 @@ fn validate_and_normalize_method(method: MatchMethod, case_sensitive: bool) -> M
         StartsWith(text) | EndsWith(text) | Contains(text) => {
             let bech32regex = regex::Regex::new(r"^[qpzry9x8gf2tvdw0s3jn54khce6mua7l]{1,38}$").unwrap();
             assert!(
-                !bech32regex.is_match(text),
-                "Invalid bech32 character. Bech32 characters are 'qpzry9x8gf2tvdw0s3jn54khce6mua7l'"
-            );
-            assert!(
-                text.len() > 38,
-                "CCID length is 38 excluding 'con1' prefix"
+                bech32regex.is_match(text),
+                "Invalid bech32 character or length. Bech32 characters are 'qpzry9x8gf2tvdw0s3jn54khce6mua7l'"
             );
             if case_sensitive {
                 match &method {
-                    StartsWith(_) => StartsWith(format!("0x{text}")),
+                    StartsWith(_) => StartsWith(format!("con1{text}")),
                     _ => method,
                 }
             } else {
                 match &method {
-                    StartsWith(_) => StartsWith(format!("0x{text}").to_lowercase()),
+                    StartsWith(_) => StartsWith(format!("con1{text}").to_lowercase()),
                     EndsWith(_) => EndsWith(text.to_lowercase()),
                     Contains(_) => Contains(text.to_lowercase()),
                     Regex(_) => method,
@@ -111,3 +117,4 @@ fn validate_and_normalize_method(method: MatchMethod, case_sensitive: bool) -> M
         Regex(_) => method,
     }
 }
+
