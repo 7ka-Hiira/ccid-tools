@@ -2,7 +2,10 @@ pub mod utils;
 mod vanity;
 
 use clap::{Parser, Subcommand, ValueEnum};
-use coins_bip39::{English, Japanese, Wordlist};
+use coins_bip39::{
+    ChineseSimplified, ChineseTraditional, Czech, English, French, Italian, Japanese, Korean,
+    Portuguese, Spanish, Wordlist,
+};
 use utils::{
     generate_entity, mnemonic_to_address_str, mnemonic_to_privkey_str, mnemonic_to_pubkey_str,
     privkey_to_address_str, privkey_to_pubkey_str, pubkey_to_address_str, translate_mnemonic,
@@ -21,16 +24,72 @@ struct Arg {
 
 #[derive(Clone, Copy, PartialEq, ValueEnum)]
 pub enum MnemonicLang {
+    #[value(alias("chinese_simplified"), alias("chinesesimplified"), alias("ChineseSimplified"))]
+    #[value(alias("simplified_chinese"), alias("simplifiedchinese"), alias("SimplifiedChinese"))]
+    #[value(alias("zh-cn"), alias("cn"))]
+    #[value(alias("中文"), alias("简体中文"), alias("简体"))]
+    ZhHans,
+    #[value(alias("chinese_traditional"), alias("chinesetraditional"), alias("ChineseTraditional"))]
+    #[value(alias("traditional_chinese"), alias("traditionalchinese"), alias("TraditionalChinese"))]
+    #[value(alias("zh-tw"), alias("tw"), alias("zh-hk"))]
+    #[value(alias("繁體中文"), alias("繁體"))]
+    ZhHant,
+    #[value(alias("czech"), alias("Czech"))]
+    #[value(alias("cesky jazyk"), alias("český jazyk"))]
+    Cs,
+    #[value(alias("english"), alias("English"))]
     En,
+    #[value(alias("french"), alias("French"))]
+    #[value(alias("francais"), alias("Francais"), alias("français"), alias("Français"))]
+    Fr,
+    #[value(alias("italian"), alias("Italian"))]
+    #[value(alias("italiano"), alias("Italiano"))]
+    It,
+    #[value(alias("japanese"), alias("Japanese"))]
+    #[value(alias("日本語"), alias("にほんご"))]
     Ja,
+    #[value(alias("korean"), alias("Korean"))]
+    #[value(alias("한국어"))]
+    Ko,
+    #[value(alias("portuguese"), alias("Portuguese"))]
+    #[value(alias("portugalština"), alias("Portugalština"))]
+    Pt,
+    #[value(alias("spanish"), alias("Spanish"))]
+    #[value(alias("espanol"), alias("Espanol"), alias("español"), alias("Español"))]
+    Es,
 }
 
 impl MnemonicLang {
     fn to_words(self) -> &'static [&'static str] {
         match self {
+            MnemonicLang::ZhHans => ChineseSimplified::get_all(),
+            MnemonicLang::ZhHant => ChineseTraditional::get_all(),
+            MnemonicLang::Cs => Czech::get_all(),
             MnemonicLang::En => English::get_all(),
+            MnemonicLang::Fr => French::get_all(),
+            MnemonicLang::It => Italian::get_all(),
             MnemonicLang::Ja => Japanese::get_all(),
+            MnemonicLang::Ko => Korean::get_all(),
+            MnemonicLang::Pt => Portuguese::get_all(),
+            MnemonicLang::Es => Spanish::get_all(),
         }
+    }
+    fn get_index(self, word: &str) -> Result<usize, usize> {
+        self.to_words().binary_search(&word)
+    }
+    fn get_lang_list() -> [Self; 10] {
+        [
+            MnemonicLang::ZhHans,
+            MnemonicLang::ZhHant,
+            MnemonicLang::Cs,
+            MnemonicLang::En,
+            MnemonicLang::Fr,
+            MnemonicLang::It,
+            MnemonicLang::Ja,
+            MnemonicLang::Ko,
+            MnemonicLang::Pt,
+            MnemonicLang::Es,
+        ]
     }
 }
 

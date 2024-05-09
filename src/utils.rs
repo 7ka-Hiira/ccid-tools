@@ -1,6 +1,6 @@
 use bech32::{Bech32, Hrp};
 use coins_bip32::prelude::SigningKey as Bip32SigningKey;
-use coins_bip39::{mnemonic::Mnemonic, English, Japanese, Wordlist};
+use coins_bip39::{mnemonic::Mnemonic, English, Wordlist};
 use core::str::FromStr;
 use k256::ecdsa::{SigningKey, VerifyingKey};
 use k256::elliptic_curve::sec1::ToEncodedPoint;
@@ -16,41 +16,38 @@ const DEFAULT_DERIVATION_PATH: &str = "m/44'/118'/0'/0/0";
 const CC_HRP: Hrp = Hrp::parse_unchecked("con");
 
 #[inline]
-pub fn translate_mnemonic(mnemonic: &str, target_mnemonic_lang: MnemonicLang) -> String {
-    let source_word_list = detect_mnemonic_lang(mnemonic).unwrap();
-    if source_word_list == target_mnemonic_lang {
+pub fn translate_mnemonic(mnemonic: &str, target_lang: MnemonicLang) -> String {
+    let source_lang = detect_mnemonic_lang(mnemonic);
+    if source_lang == target_lang {
         return mnemonic.to_string();
     }
     mnemonic
         .split_whitespace()
         .map(|word| {
-            source_word_list
-                .to_words()
-                .binary_search(&word.nfkd().collect::<String>().as_str())
+            let index = source_lang
+                .get_index(&word.nfkd().collect::<String>())
                 .unwrap_or_else(|e| {
                     panic!("Failed to parse mnemonic: {e}");
-                })
+                });
+            target_lang.to_words()[index].to_owned()
         })
-        .map(|index| target_mnemonic_lang.to_words()[index].to_owned())
         .collect::<Vec<String>>()
         .join(" ")
 }
 
 #[inline]
-fn detect_mnemonic_lang(mnemonic: &str) -> Result<MnemonicLang, Box<dyn Error>> {
-    if mnemonic
-        .split_whitespace()
-        .all(|word| Japanese::get_index(&word.nfkd().collect::<String>()).is_ok())
-    {
-        Ok(MnemonicLang::Ja)
-    } else if mnemonic
-        .split_whitespace()
-        .all(|word| English::get_index(&word.nfkd().collect::<String>()).is_ok())
-    {
-        Ok(MnemonicLang::En)
-    } else {
-        Err("Invalid mnemonic".into())
+fn detect_mnemonic_lang(mnemonic: &str) -> MnemonicLang {
+    let lang_list = MnemonicLang::get_lang_list();
+    for lang in lang_list {
+        let words = lang.to_words();
+        if mnemonic
+            .split_whitespace()
+            .all(|word| words.contains(&word))
+        {
+            return lang;
+        }
     }
+    panic!("Failed to detect mnemonic language");
 }
 
 #[inline]
@@ -189,6 +186,14 @@ mod tests {
     fn test_translate_mnemonic() {
         let translated = translate_mnemonic(MNEMONIC_EN_STR, MnemonicLang::Ja);
         assert_eq!(translated, MNEMONIC_JA_STR);
+    }
+
+    #[test]
+    fn test_detect_mnemonic_lang() {
+        let lang = detect_mnemonic_lang(MNEMONIC_EN_STR);
+        assert!(lang == MnemonicLang::En);
+        let lang = detect_mnemonic_lang(MNEMONIC_JA_STR);
+        assert!(lang == MnemonicLang::Ja);
     }
 
     #[test]
