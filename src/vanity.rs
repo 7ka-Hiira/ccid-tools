@@ -40,16 +40,16 @@ pub fn lookup(
     println!("Searching using {threads_num} threads");
 
     let counter = Arc::new(AtomicU64::new(0));
-
-    let mut handles = vec![];
-    for _ in 0..threads_num {
-        let matcher = Arc::clone(&matcher);
-        let counter = Arc::clone(&counter);
-        let handle = thread::spawn(move || {
-            worker(&matcher, stop_when_found, lang, &counter);
-        });
-        handles.push(handle);
-    }
+    
+    let handles = (0..threads_num)
+        .map(|_| {
+            let matcher = Arc::clone(&matcher);
+            let counter = Arc::clone(&counter);
+            thread::spawn(move || {
+                worker(&matcher, stop_when_found, lang, &counter);
+            })
+        })
+        .collect::<Vec<_>>();
     handles.into_iter().for_each(|h| h.join().unwrap());
 }
 
@@ -66,7 +66,9 @@ fn worker(
             println!("Attempt: {count}");
         }
         if let Some((mnemonic, addr)) = genkey_attempt(matcher, &mut rng) {
-            let mnemonic = translate_mnemonic(&mnemonic, lang);
+            let mnemonic = translate_mnemonic(&mnemonic, lang).unwrap_or_else(|e| {
+                panic!("Failed to translate mnemonic: {e}");
+            });
             println!("Mnemonic: {mnemonic}\nAddress: {addr}\n");
             if stop_when_found {
                 std::process::exit(0);
@@ -81,7 +83,9 @@ fn genkey_attempt(
     rng: &mut rand_chacha::ChaCha20Rng,
 ) -> Option<(String, String)> {
     let mnemonic: Mnemonic<English> = Mnemonic::new(rng);
-    let addr = mnemonic_to_addr_fast(&mnemonic);
+    let addr = mnemonic_to_addr_fast(&mnemonic).unwrap_or_else(|e| {
+        panic!("Failed to generate address: {e}");
+    });
     if matcher(&addr.to_string()) {
         Some((mnemonic.to_phrase(), addr.to_string()))
     } else {

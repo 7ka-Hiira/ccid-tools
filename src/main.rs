@@ -24,13 +24,29 @@ struct Arg {
 
 #[derive(Clone, Copy, PartialEq, ValueEnum)]
 pub enum MnemonicLang {
-    #[value(alias("chinese_simplified"), alias("chinesesimplified"), alias("ChineseSimplified"))]
-    #[value(alias("simplified_chinese"), alias("simplifiedchinese"), alias("SimplifiedChinese"))]
+    #[value(
+        alias("chinese_simplified"),
+        alias("chinesesimplified"),
+        alias("ChineseSimplified")
+    )]
+    #[value(
+        alias("simplified_chinese"),
+        alias("simplifiedchinese"),
+        alias("SimplifiedChinese")
+    )]
     #[value(alias("zh-cn"), alias("cn"))]
     #[value(alias("中文"), alias("简体中文"), alias("简体"))]
     ZhHans,
-    #[value(alias("chinese_traditional"), alias("chinesetraditional"), alias("ChineseTraditional"))]
-    #[value(alias("traditional_chinese"), alias("traditionalchinese"), alias("TraditionalChinese"))]
+    #[value(
+        alias("chinese_traditional"),
+        alias("chinesetraditional"),
+        alias("ChineseTraditional")
+    )]
+    #[value(
+        alias("traditional_chinese"),
+        alias("traditionalchinese"),
+        alias("TraditionalChinese")
+    )]
     #[value(alias("zh-tw"), alias("tw"), alias("zh-hk"))]
     #[value(alias("繁體中文"), alias("繁體"))]
     ZhHant,
@@ -40,7 +56,12 @@ pub enum MnemonicLang {
     #[value(alias("english"), alias("English"))]
     En,
     #[value(alias("french"), alias("French"))]
-    #[value(alias("francais"), alias("Francais"), alias("français"), alias("Français"))]
+    #[value(
+        alias("francais"),
+        alias("Francais"),
+        alias("français"),
+        alias("Français")
+    )]
     Fr,
     #[value(alias("italian"), alias("Italian"))]
     #[value(alias("italiano"), alias("Italiano"))]
@@ -249,7 +270,9 @@ fn main() {
             vanity::lookup(match_method, threads, stop_when_found, case_sensitive, lang);
         }
         SubCommand::MnemonicToAddress { mnemonic } => {
-            let mnemonic = translate_mnemonic(&mnemonic, MnemonicLang::En);
+            let mnemonic = translate_mnemonic(&mnemonic, MnemonicLang::En).unwrap_or_else(|e| {
+                panic!("Failed to translate mnemonic: {e}");
+            });
             println!(
                 "{}",
                 mnemonic_to_address_str(&mnemonic).unwrap_or_else(|e| {
@@ -258,7 +281,9 @@ fn main() {
             );
         }
         SubCommand::MnemonicToPrivkey { mnemonic } => {
-            let mnemonic = translate_mnemonic(&mnemonic, MnemonicLang::En);
+            let mnemonic = translate_mnemonic(&mnemonic, MnemonicLang::En).unwrap_or_else(|e| {
+                panic!("Failed to translate mnemonic: {e}");
+            });
             println!(
                 "{}",
                 mnemonic_to_privkey_str(&mnemonic).unwrap_or_else(|e| {
@@ -267,7 +292,9 @@ fn main() {
             );
         }
         SubCommand::MnemonicToPubkey { mnemonic } => {
-            let mnemonic = translate_mnemonic(&mnemonic, MnemonicLang::En);
+            let mnemonic = translate_mnemonic(&mnemonic, MnemonicLang::En).unwrap_or_else(|e| {
+                panic!("Failed to translate mnemonic: {e}");
+            });
             println!(
                 "{}",
                 mnemonic_to_pubkey_str(&mnemonic).unwrap_or_else(|e| {
@@ -303,7 +330,9 @@ fn main() {
             target_lang,
             mnemonic,
         } => {
-            let result = translate_mnemonic(&mnemonic, target_lang);
+            let result = translate_mnemonic(&mnemonic, target_lang).unwrap_or_else(|e| {
+                panic!("Failed to translate mnemonic: {e}");
+            });
             println!("{result}");
         }
     }

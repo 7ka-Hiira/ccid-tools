@@ -16,38 +16,38 @@ const DEFAULT_DERIVATION_PATH: &str = "m/44'/118'/0'/0/0";
 const CC_HRP: Hrp = Hrp::parse_unchecked("con");
 
 #[inline]
-pub fn translate_mnemonic(mnemonic: &str, target_lang: MnemonicLang) -> String {
-    let source_lang = detect_mnemonic_lang(mnemonic);
+pub fn translate_mnemonic(
+    mnemonic: &str,
+    target_lang: MnemonicLang,
+) -> Result<String, Box<dyn Error>> {
+    let source_lang = detect_mnemonic_lang(mnemonic)?;
     if source_lang == target_lang {
-        return mnemonic.to_string();
+        return Ok(mnemonic.to_string());
     }
-    mnemonic
+    Ok(mnemonic
         .split_whitespace()
         .map(|word| {
             let index = source_lang
                 .get_index(&word.nfkd().collect::<String>())
-                .unwrap_or_else(|e| {
-                    panic!("Failed to parse mnemonic: {e}");
-                });
+                .unwrap_or_else(|e| panic!("failded to parse mnemonic word: {e}"));
             target_lang.to_words()[index].to_owned()
         })
         .collect::<Vec<String>>()
-        .join(" ")
+        .join(" "))
 }
 
 #[inline]
-fn detect_mnemonic_lang(mnemonic: &str) -> MnemonicLang {
-    let lang_list = MnemonicLang::get_lang_list();
-    for lang in lang_list {
-        let words = lang.to_words();
-        if mnemonic
-            .split_whitespace()
-            .all(|word| words.contains(&word))
-        {
-            return lang;
-        }
-    }
-    panic!("Failed to detect mnemonic language");
+fn detect_mnemonic_lang(mnemonic: &str) -> Result<MnemonicLang, Box<dyn Error>> {
+    MnemonicLang::get_lang_list()
+        .iter()
+        .find(|lang| {
+            let words = lang.to_words();
+            mnemonic
+                .split_whitespace()
+                .all(|word| words.contains(&word))
+        })
+        .copied()
+        .ok_or("Failed to detect mnemonic language".into())
 }
 
 #[inline]
@@ -134,35 +134,32 @@ pub fn pubkey_to_address_str(pubkey: &str, is_subkey: bool) -> Result<String, Bo
 }
 
 #[inline]
-pub fn generate_entity(
-    lang: MnemonicLang,
-) -> Result<(String, String, String), Box<dyn Error>> {
+pub fn generate_entity(lang: MnemonicLang) -> Result<(String, String, String), Box<dyn Error>> {
     let mnemonic = Mnemonic::<English>::new(&mut ChaCha20Rng::from_entropy()).to_phrase();
     let privkey = mnemonic_to_privkey_str(&mnemonic)?;
     let ccid = mnemonic_to_address_str(&mnemonic)?;
-    let mnemonic = translate_mnemonic(&mnemonic, lang);
+    let mnemonic = translate_mnemonic(&mnemonic, lang)?;
     Ok((mnemonic, privkey, ccid))
 }
 
 #[inline]
-pub fn mnemonic_to_addr_fast<W: Wordlist>(mnemonic: &Mnemonic<W>) -> String {
-    let privkey = mnemonic.derive_key(DEFAULT_DERIVATION_PATH, None).unwrap();
+pub fn mnemonic_to_addr_fast<W: Wordlist>(
+    mnemonic: &Mnemonic<W>,
+) -> Result<String, Box<dyn Error>> {
+    let privkey = mnemonic.derive_key(DEFAULT_DERIVATION_PATH, None)?;
     let privkey: &Bip32SigningKey = privkey.as_ref();
     let pubkey = secp256k1::PublicKey::from_slice(
-        SigningKey::from_bytes(&privkey.to_bytes())
-            .unwrap()
+        SigningKey::from_bytes(&privkey.to_bytes())?
             .verifying_key()
             .as_ref()
             .to_encoded_point(false)
             .as_bytes(),
-    )
-    .unwrap()
+    )?
     .serialize();
     let mut sha256hasher = sha2::Sha256::new();
     sha256hasher.update(pubkey);
-    let pubkey =
-        bech32::encode::<Bech32>(CC_HRP, &Ripemd160::digest(sha256hasher.finalize())).unwrap();
-    pubkey.to_string()
+    let pubkey = bech32::encode::<Bech32>(CC_HRP, &Ripemd160::digest(sha256hasher.finalize()))?;
+    Ok(pubkey.to_string())
 }
 
 #[cfg(test)]
@@ -180,15 +177,15 @@ mod tests {
 
     #[test]
     fn test_translate_mnemonic() {
-        let translated = translate_mnemonic(MNEMONIC_EN_STR, MnemonicLang::Ja);
+        let translated = translate_mnemonic(MNEMONIC_EN_STR, MnemonicLang::Ja).unwrap();
         assert_eq!(translated, MNEMONIC_JA_STR);
     }
 
     #[test]
     fn test_detect_mnemonic_lang() {
-        let lang = detect_mnemonic_lang(MNEMONIC_EN_STR);
+        let lang = detect_mnemonic_lang(MNEMONIC_EN_STR).unwrap();
         assert!(lang == MnemonicLang::En);
-        let lang = detect_mnemonic_lang(MNEMONIC_JA_STR);
+        let lang = detect_mnemonic_lang(MNEMONIC_JA_STR).unwrap();
         assert!(lang == MnemonicLang::Ja);
     }
 
@@ -240,7 +237,7 @@ mod tests {
     #[test]
     fn test_mnemonic_to_addr_fast() {
         let mnemonic: Mnemonic<English> = Mnemonic::from_str(MNEMONIC_EN_STR).unwrap();
-        let address = mnemonic_to_addr_fast(&mnemonic);
+        let address = mnemonic_to_addr_fast(&mnemonic).unwrap();
         assert_eq!(address, ADDRESS);
     }
 }
