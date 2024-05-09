@@ -134,17 +134,13 @@ pub fn pubkey_to_address_str(pubkey: &str, is_subkey: bool) -> Result<String, Bo
 }
 
 #[inline]
-pub fn generate_entity<T: Wordlist>(
-    lang: crate::MnemonicLang,
+pub fn generate_entity(
+    lang: MnemonicLang,
 ) -> Result<(String, String, String), Box<dyn Error>> {
-    let mnemonic = Mnemonic::<T>::new(&mut ChaCha20Rng::from_entropy()).to_phrase();
+    let mnemonic = Mnemonic::<English>::new(&mut ChaCha20Rng::from_entropy()).to_phrase();
     let privkey = mnemonic_to_privkey_str(&mnemonic)?;
     let ccid = mnemonic_to_address_str(&mnemonic)?;
-    let mnemonic = if matches!(lang, crate::MnemonicLang::Ja) {
-        translate_mnemonic(&mnemonic, lang)
-    } else {
-        mnemonic
-    };
+    let mnemonic = translate_mnemonic(&mnemonic, lang);
     Ok((mnemonic, privkey, ccid))
 }
 
@@ -234,7 +230,7 @@ mod tests {
 
     #[test]
     fn test_generate_entity() {
-        let (mnemonic, privkey, address) = generate_entity::<English>(MnemonicLang::En).unwrap();
+        let (mnemonic, privkey, address) = generate_entity(MnemonicLang::En).unwrap();
         assert_eq!(mnemonic.split_whitespace().count(), 12);
         assert!(address.starts_with("con1"));
         assert_eq!(privkey.len(), 64);

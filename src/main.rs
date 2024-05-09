@@ -230,7 +230,7 @@ fn main() {
     let args = Arg::parse();
     match args.subcommand {
         SubCommand::Keygen { lang } => {
-            let entity = generate_entity::<coins_bip39::English>(lang).unwrap_or_else(|e| {
+            let entity = generate_entity(lang).unwrap_or_else(|e| {
                 panic!("Failed to generate entity: {e}");
             });
             println!(
