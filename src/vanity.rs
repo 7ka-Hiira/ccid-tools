@@ -40,7 +40,7 @@ pub fn lookup(
     println!("Searching using {threads_num} threads");
 
     let counter = Arc::new(AtomicU64::new(0));
-    
+
     let handles = (0..threads_num)
         .map(|_| {
             let matcher = Arc::clone(&matcher);
