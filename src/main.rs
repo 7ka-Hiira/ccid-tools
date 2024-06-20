@@ -48,7 +48,7 @@ pub enum MnemonicLang {
         alias("TraditionalChinese")
     )]
     #[value(alias("zh-tw"), alias("tw"), alias("zh-hk"))]
-    #[value(alias("繁體中文"), alias("繁體"))]
+    #[value(alias("繁體中文"), alias("繁體"), alias("正體字"), alias("正體"))]
     ZhHant,
     #[value(alias("czech"), alias("Czech"))]
     #[value(alias("cesky jazyk"), alias("český jazyk"))]
