@@ -1,11 +1,11 @@
 # CCID Tools
 
-A [Concurrent](https://github.com/totegamma/concurrent) CCID management tool.
+A [Concurrent](https://github.com/totegamma/concurrent) CCID Management Tool.
 
 ## Installation (Linux)
 
-1. Download binary from [Releases](https://github.com/7ka-Hiira/ccid-tools/releases/latest)
-2. Grant Permission
+1. Download the binary from [Releases](https://github.com/7ka-Hiira/ccid-tools/releases/latest)
+2. Grant permission:
 
 ```sh
 $ cd /path/to/your/download/directory
@@ -19,8 +19,10 @@ $ chmod +x ./ccid-tools
 $ ./ccid-tools <subcommand> <options>
 ```
 
-## Build yourself
-official build doesn't work on some old CPUs, so you may need to build it yourself.
+## Build from source
+
+You may need to build it yourself, as the official build does not work on some older CPUs.
+
 ```sh
 $ git clone https://github.com/7ka-Hiira/ccid-tools.git
 $ cd ccid-tools
@@ -31,31 +33,31 @@ You can find the binary in `./target/release/ccid-tools`
 
 ## Usage
 
-### Generate an entity
+### Generate an Entity
 
 ```sh
 $ ./ccid-tools keygen
 ```
 
-### Vanity key generation
+### Vanity Key Generation
 
-You'll get Mnemonics and Addresses
+You can get mnemonics and addresses
 
-Examples
+#### Examples
 
-- Generate CCID starts with 12345 and Japanese mnemonic
+- Generate CCIDs starting with con12345 and using a Japanese mnemonic
 
 ```sh
 $ ./ccid-tools vanity-search --starts-with 2345 --lang ja
 ```
 
-- Generate CCID containing abcdef (case-sensitive) with 3 threads, stop when one is found
+- Generate a CCID containing 'xyz' (case-sensitive) using 3 threads, stopping when one is found
 
 ```sh
 $ ./ccid-tools vanity-search --contains xyz -j3 --stop-when-found --case-sensitive
 ```
 
-- Generate CCID where the 5 characters following the 'con1' and the last 5 characters are numbers
+- Generate CCIDs where the 5 characters after 'con1' and the last 5 characters are numbers
 
 ```sh
 $ ./ccid-tools vanity-search --regex "^con1\d{5}.*\d{5}$"
@@ -63,15 +65,15 @@ $ ./ccid-tools vanity-search --regex "^con1\d{5}.*\d{5}$"
 
 ### Key derivation
 
-Examples
+#### Examples
 
-- Derive privatekey from mnemonics
+- Derive a privatekey from mnemonics
 
 ```sh
 $ ./ccid-tools mnemonic-to-privkey "return velvet service basket ..."
 ```
 
-- Derive CCID from privatekey
+- Derive a CCID from privatekey
 
 ```sh
 $ ./ccid-tools privkey-to-address "bcb7710a8cb369bc695e7e200611d501b..."
@@ -79,7 +81,7 @@ $ ./ccid-tools privkey-to-address "bcb7710a8cb369bc695e7e200611d501b..."
 
 ## Contributing
 
-New features, bug reports/fixes, and improvements are welcome:)
+New features, bug reports/fixes, and improvements are welcome! :)
 
 ## License
 

@@ -100,7 +100,11 @@ fn validate_and_normalize_method(method: MatchMethod, case_sensitive: bool) -> M
                 regex::Regex::new(r"^[qpzry9x8gf2tvdw0s3jn54khce6mua7l]{1,38}$").unwrap();
             assert!(
                 bech32regex.is_match(text),
-                "Invalid bech32 character or length. Bech32 characters are 'qpzry9x8gf2tvdw0s3jn54khce6mua7l'"
+                "\n*** ERROR ***\n\
+                Invalid Bech32 segment format. Please ensure the following:\n\
+                - Only the following characters are allowed: 'qpzry9x8gf2tvdw0s3jn54khce6mua7l'\n\
+                - The segment length must not exceed 39 characters.\n\
+                *************\n"
             );
             if case_sensitive {
                 match &method {
