@@ -2,10 +2,11 @@ use coins_bip39::{wordlist::English, Mnemonic};
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
 use regex::RegexBuilder;
-use std::sync::atomic::{AtomicBool, AtomicU64};
+use std::io::{Cursor, Write};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::{sync::Arc, thread};
 
-use crate::utils::{mnemonic_to_addr_fast, translate_mnemonic, CC_ADDR_PREFIX};
+use crate::utils::{mnemonic_to_addr_fast, translate_mnemonic, CC_ADDR_PREFIX, CC_ADDR_SIZE};
 use crate::MatchMethod::{self, Contains, EndsWith, Regex, StartsWith};
 
 const PRINT_COUNT: u64 = 50000;
@@ -16,16 +17,24 @@ pub fn lookup(
     stop_when_found: bool,
     lang: crate::MnemonicLang,
 ) {
-    let method = validate_method(method);
-    let matcher: Arc<dyn Fn(&str) -> bool + Send + Sync> = match method {
-        StartsWith(hex) => Arc::new(move |a: &str| a.starts_with(&hex)),
-        EndsWith(hex) => Arc::new(move |a: &str| a.ends_with(&hex)),
-        Contains(hex) => Arc::new(move |a: &str| a.contains(&hex)),
+    let mut match_bytes = [0u8; CC_ADDR_SIZE];
+    let match_length = validate_method(&method, &mut match_bytes);
+    let matcher: Arc<dyn Fn(&[u8]) -> bool + Send + Sync> = match method {
+        StartsWith(_) => Arc::new(move |a: &[u8]| a.starts_with(&match_bytes[..match_length])),
+        EndsWith(_) => Arc::new(move |a: &[u8]| a.ends_with(&match_bytes[..match_length])),
+        Contains(_) => Arc::new(move |a: &[u8]| {
+            a.windows(match_length)
+                .any(|w| w == &match_bytes[..match_length])
+        }),
         Regex(regex) => {
             let re = RegexBuilder::new(&regex).build().unwrap_or_else(|e| {
                 panic!("Invalid regex: {e}");
             });
-            Arc::new(move |a: &str| re.is_match(a))
+            Arc::new(move |a: &[u8]| {
+                // ascii guaranteed
+                let text = unsafe { String::from_utf8_unchecked(a.to_vec()) };
+                re.is_match(&text)
+            })
         }
     };
 
@@ -33,7 +42,6 @@ pub fn lookup(
     println!("Searching using {threads_num} threads");
 
     let counter = Arc::new(AtomicU64::new(0));
-
     let stop_flag = Arc::new(AtomicBool::new(false));
 
     let handles = (0..threads_num)
@@ -50,20 +58,21 @@ pub fn lookup(
 }
 
 fn worker(
-    matcher: &Arc<dyn Fn(&str) -> bool + Send + Sync>,
+    matcher: &Arc<dyn Fn(&[u8]) -> bool + Send + Sync>,
     stop_when_found: bool,
     lang: crate::MnemonicLang,
     counter: &AtomicU64,
     stop_flag: &AtomicBool,
 ) {
     let mut rng = ChaCha20Rng::from_entropy();
-    while !stop_flag.load(std::sync::atomic::Ordering::Relaxed) {
-        let count = counter.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let mut buffer = [0u8; CC_ADDR_SIZE];
+    while !stop_flag.load(Ordering::Relaxed) {
+        let count = counter.fetch_add(1, Ordering::Relaxed);
         if count % PRINT_COUNT == 0 {
             println!("Attempt: {count}");
         }
-        if let Some((mnemonic, addr)) = genkey_attempt(matcher, &mut rng) {
-            if stop_flag.load(std::sync::atomic::Ordering::Relaxed) {
+        if let Some((mnemonic, addr)) = genkey_attempt(matcher, &mut buffer, &mut rng) {
+            if stop_flag.load(Ordering::Relaxed) {
                 return;
             }
             let mnemonic = translate_mnemonic(&mnemonic, lang).unwrap_or_else(|e| {
@@ -71,7 +80,7 @@ fn worker(
             });
             println!("Mnemonic: {mnemonic}\nAddress: {addr}\n");
             if stop_when_found {
-                stop_flag.store(true, std::sync::atomic::Ordering::Relaxed);
+                stop_flag.store(true, Ordering::Relaxed);
                 return;
             }
         }
@@ -80,21 +89,25 @@ fn worker(
 
 #[inline]
 fn genkey_attempt(
-    matcher: &Arc<dyn Fn(&str) -> bool + Send + Sync>,
+    matcher: &Arc<dyn Fn(&[u8]) -> bool + Send + Sync>,
+    buffer: &mut [u8],
     rng: &mut rand_chacha::ChaCha20Rng,
 ) -> Option<(String, String)> {
     let mnemonic: Mnemonic<English> = Mnemonic::new(rng);
-    let addr = mnemonic_to_addr_fast(&mnemonic).unwrap_or_else(|e| {
-        panic!("Failed to generate address: {e}");
-    });
-    if matcher(&addr.to_string()) {
-        Some((mnemonic.to_phrase(), addr.to_string()))
+    let mut cursor = Cursor::new(&mut buffer[..]);
+    mnemonic_to_addr_fast(&mnemonic, &mut cursor)
+        .expect("Encoding failed: buffer might be too small");
+    if matcher(buffer) {
+        Some((
+            mnemonic.to_phrase(),
+            String::from_utf8(buffer.to_vec()).unwrap(),
+        ))
     } else {
         None
     }
 }
 
-fn validate_method(method: MatchMethod) -> MatchMethod {
+fn validate_method(method: &MatchMethod, match_bytes: &mut [u8]) -> usize {
     let validate = |text: &str| -> String {
         let text_lower = text.to_lowercase();
         let bech32regex = regex::Regex::new(r"^[qpzry9x8gf2tvdw0s3jn54khce6mua7l]*$").unwrap();
@@ -104,10 +117,19 @@ fn validate_method(method: MatchMethod) -> MatchMethod {
             );
         text_lower
     };
+    let mut cursor = Cursor::new(&mut match_bytes[..]);
     match method {
-        StartsWith(text) => StartsWith(format!("{}{}", CC_ADDR_PREFIX, validate(&text))),
-        EndsWith(text) => EndsWith(validate(&text)),
-        Contains(text) => Contains(validate(&text)),
-        Regex(_) => method,
-    }
+        StartsWith(text) => {
+            let valid_text = validate(text);
+            write!(cursor, "{}{}", CC_ADDR_PREFIX, valid_text)
+                .expect("Buffer overflow: Search string is too long");
+        }
+        EndsWith(text) | Contains(text) => {
+            let valid_text = validate(text);
+            write!(cursor, "{}", valid_text).expect("Buffer overflow: Search string is too long");
+        }
+        Regex(_) => (),
+    };
+
+    cursor.position() as usize
 }

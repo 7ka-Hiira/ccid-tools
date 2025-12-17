@@ -8,6 +8,7 @@ use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
 use ripemd::{Digest, Ripemd160};
 use std::error::Error;
+use std::io;
 use unicode_normalization::UnicodeNormalization;
 
 use crate::MnemonicLang;
@@ -15,6 +16,7 @@ use crate::MnemonicLang;
 const DEFAULT_DERIVATION_PATH: &str = "m/44'/118'/0'/0/0";
 const CC_HRP: Hrp = Hrp::parse_unchecked("con");
 pub const CC_ADDR_PREFIX: &str = "con1";
+pub const CC_ADDR_SIZE: usize = 42;
 
 #[inline]
 pub fn translate_mnemonic(
@@ -144,9 +146,10 @@ pub fn generate_entity(lang: MnemonicLang) -> Result<(String, String, String), B
 }
 
 #[inline]
-pub fn mnemonic_to_addr_fast<W: Wordlist>(
+pub fn mnemonic_to_addr_fast<W: Wordlist, Address: io::Write>(
     mnemonic: &Mnemonic<W>,
-) -> Result<String, Box<dyn Error>> {
+    writer: &mut Address,
+) -> Result<(), Box<dyn Error>> {
     let privkey = mnemonic.derive_key(DEFAULT_DERIVATION_PATH, None)?;
     let privkey: &Bip32SigningKey = privkey.as_ref();
     let pubkey = secp256k1::PublicKey::from_slice(
@@ -159,8 +162,10 @@ pub fn mnemonic_to_addr_fast<W: Wordlist>(
     .serialize();
     let mut sha256hasher = sha2::Sha256::new();
     sha256hasher.update(pubkey);
-    let pubkey = bech32::encode::<Bech32>(CC_HRP, &Ripemd160::digest(sha256hasher.finalize()))?;
-    Ok(pubkey.to_string())
+    let hash_result = Ripemd160::digest(sha256hasher.finalize());
+
+    bech32::encode_lower_to_writer::<Bech32, _>(writer, CC_HRP, &hash_result)?;
+    Ok(())
 }
 
 #[cfg(test)]
@@ -238,7 +243,9 @@ mod tests {
     #[test]
     fn test_mnemonic_to_addr_fast() {
         let mnemonic: Mnemonic<English> = Mnemonic::from_str(MNEMONIC_EN_STR).unwrap();
-        let address = mnemonic_to_addr_fast(&mnemonic).unwrap();
-        assert_eq!(address, ADDRESS);
+        let mut address = [0u8; CC_ADDR_SIZE];
+        let mut cursor = std::io::Cursor::new(&mut address[..]);
+        mnemonic_to_addr_fast(&mnemonic, &mut cursor).unwrap();
+        assert_eq!(address, ADDRESS.as_bytes());
     }
 }

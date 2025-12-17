@@ -28,8 +28,8 @@ $ git clone https://github.com/7ka-Hiira/ccid-tools.git
 $ cd ccid-tools
 $ RUSTFLAGS="-C target-cpu=native" cargo build --release
 ```
-You can find the binary in `./target/release/ccid-tools`
 
+You can find the binary in `./target/release/ccid-tools`
 
 ## Usage
 
@@ -51,10 +51,10 @@ You can get mnemonics and addresses
 $ ./ccid-tools vanity-search --starts-with 2345 --lang ja
 ```
 
-- Generate a CCID containing 'xyz' (case-sensitive) using 3 threads, stopping when one is found
+- Generate a CCID containing 'xyz' using 3 threads, stopping when one is found
 
 ```sh
-$ ./ccid-tools vanity-search --contains xyz -j3 --stop-when-found --case-sensitive
+$ ./ccid-tools vanity-search --contains xyz -j3 --stop-when-found
 ```
 
 - Generate CCIDs where the 5 characters after 'con1' and the last 5 characters are numbers
