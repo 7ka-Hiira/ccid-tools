@@ -2,7 +2,7 @@ use coins_bip39::{wordlist::English, Mnemonic};
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
 use regex::RegexBuilder;
-use std::sync::atomic::AtomicU64;
+use std::sync::atomic::{AtomicBool, AtomicU64};
 use std::{sync::Arc, thread};
 
 use crate::utils::{mnemonic_to_addr_fast, translate_mnemonic, CC_ADDR_PREFIX};
@@ -41,12 +41,15 @@ pub fn lookup(
 
     let counter = Arc::new(AtomicU64::new(0));
 
+    let stop_flag = Arc::new(AtomicBool::new(false));
+
     let handles = (0..threads_num)
         .map(|_| {
             let matcher = Arc::clone(&matcher);
             let counter = Arc::clone(&counter);
+            let stop_flag = Arc::clone(&stop_flag);
             thread::spawn(move || {
-                worker(&matcher, stop_when_found, lang, &counter);
+                worker(&matcher, stop_when_found, lang, &counter, &stop_flag);
             })
         })
         .collect::<Vec<_>>();
@@ -58,20 +61,25 @@ fn worker(
     stop_when_found: bool,
     lang: crate::MnemonicLang,
     counter: &AtomicU64,
+    stop_flag: &AtomicBool,
 ) {
     let mut rng = ChaCha20Rng::from_entropy();
-    loop {
+    while !stop_flag.load(std::sync::atomic::Ordering::Relaxed) {
         let count = counter.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         if count % PRINT_COUNT == 0 {
             println!("Attempt: {count}");
         }
         if let Some((mnemonic, addr)) = genkey_attempt(matcher, &mut rng) {
+            if stop_flag.load(std::sync::atomic::Ordering::Relaxed) {
+                return;
+            }
             let mnemonic = translate_mnemonic(&mnemonic, lang).unwrap_or_else(|e| {
                 panic!("Failed to translate mnemonic: {e}");
             });
             println!("Mnemonic: {mnemonic}\nAddress: {addr}\n");
             if stop_when_found {
-                std::process::exit(0);
+                stop_flag.store(true, std::sync::atomic::Ordering::Relaxed);
+                return;
             }
         }
     }
