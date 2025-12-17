@@ -9,7 +9,9 @@ use std::{sync::Arc, thread};
 use crate::utils::{mnemonic_to_addr_fast, translate_mnemonic, CC_ADDR_PREFIX, CC_ADDR_SIZE};
 use crate::MatchMethod::{self, Contains, EndsWith, Regex, StartsWith};
 
-const PRINT_COUNT: u64 = 50000;
+const COUNTER_BATCH_SIZE: u64 = 1000;
+// PRINT_SIZE should be multiple of COUNTER_BATCH_SIZE
+const PRINT_COUNTER_SIZE: u64 = COUNTER_BATCH_SIZE * 50;
 
 pub fn lookup(
     method: MatchMethod,
@@ -66,22 +68,25 @@ fn worker(
     let mut rng = ChaCha20Rng::from_entropy();
     let mut buffer = [0u8; CC_ADDR_SIZE];
     while !stop_flag.load(Ordering::Relaxed) {
-        let count = counter.fetch_add(1, Ordering::Relaxed);
-        if count % PRINT_COUNT == 0 {
-            println!("Attempt: {count}");
+        for _ in 0..COUNTER_BATCH_SIZE {
+            if let Some((mnemonic, addr)) = genkey_attempt(matcher, &mut buffer, &mut rng) {
+                if stop_flag.load(Ordering::Relaxed) {
+                    return;
+                }
+                let mnemonic = translate_mnemonic(&mnemonic, lang).unwrap_or_else(|e| {
+                    panic!("Failed to translate mnemonic: {e}");
+                });
+                println!("Mnemonic: {mnemonic}\nAddress: {addr}\n");
+                if stop_when_found {
+                    stop_flag.store(true, Ordering::Relaxed);
+                    return;
+                }
+            }
         }
-        if let Some((mnemonic, addr)) = genkey_attempt(matcher, &mut buffer, &mut rng) {
-            if stop_flag.load(Ordering::Relaxed) {
-                return;
-            }
-            let mnemonic = translate_mnemonic(&mnemonic, lang).unwrap_or_else(|e| {
-                panic!("Failed to translate mnemonic: {e}");
-            });
-            println!("Mnemonic: {mnemonic}\nAddress: {addr}\n");
-            if stop_when_found {
-                stop_flag.store(true, Ordering::Relaxed);
-                return;
-            }
+        let prev_count = counter.fetch_add(COUNTER_BATCH_SIZE, Ordering::Relaxed);
+        let new_count = counter.load(Ordering::Relaxed);
+        if prev_count / PRINT_COUNTER_SIZE != new_count / PRINT_COUNTER_SIZE {
+            println!("Attempt: {new_count}");
         }
     }
 }
