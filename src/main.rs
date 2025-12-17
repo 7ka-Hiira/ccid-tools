@@ -186,9 +186,6 @@ enum SubCommand {
         /// Exits after the first match
         #[clap(short = 'x', long, value_name = "BOOL", default_value_t = false)]
         stop_when_found: bool,
-        /// Enable case-sensitive search
-        #[clap(short, long, value_name = "BOOL", default_value_t = false)]
-        case_sensitive: bool,
         /// Specify the mnemonic language
         #[clap(short, long, value_name = "MNEMONIC_LANG", value_enum, default_value_t = MnemonicLang::En)]
         lang: MnemonicLang,
@@ -263,11 +260,10 @@ fn main() {
             match_method,
             threads,
             stop_when_found,
-            case_sensitive,
             lang,
         } => {
             let match_method = match_method.into_matchmethod();
-            vanity::lookup(match_method, threads, stop_when_found, case_sensitive, lang);
+            vanity::lookup(match_method, threads, stop_when_found, lang);
         }
         SubCommand::MnemonicToAddress { mnemonic } => {
             let mnemonic = translate_mnemonic(&mnemonic, MnemonicLang::En).unwrap_or_else(|e| {

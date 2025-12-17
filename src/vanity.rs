@@ -14,24 +14,17 @@ pub fn lookup(
     method: MatchMethod,
     threads: Option<usize>,
     stop_when_found: bool,
-    case_sensitive: bool,
     lang: crate::MnemonicLang,
 ) {
-    let method = validate_and_normalize_method(method, case_sensitive);
-    let matcher: Arc<dyn Fn(&str) -> bool + Send + Sync> = match (method, case_sensitive) {
-        (StartsWith(hex), false) => Arc::new(move |a: &str| a.to_lowercase().starts_with(&hex)),
-        (StartsWith(hex), true) => Arc::new(move |a: &str| a.starts_with(&hex)),
-        (EndsWith(hex), false) => Arc::new(move |a: &str| a.to_lowercase().ends_with(&hex)),
-        (EndsWith(hex), true) => Arc::new(move |a: &str| a.ends_with(&hex)),
-        (Contains(hex), false) => Arc::new(move |a: &str| a.to_lowercase().contains(&hex)),
-        (Contains(hex), true) => Arc::new(move |a: &str| a.contains(&hex)),
-        (Regex(regex), case_sensitive) => {
-            let re = RegexBuilder::new(&regex)
-                .case_insensitive(!case_sensitive)
-                .build()
-                .unwrap_or_else(|e| {
-                    panic!("Invalid regex: {e}");
-                });
+    let method = validate_method(method);
+    let matcher: Arc<dyn Fn(&str) -> bool + Send + Sync> = match method {
+        StartsWith(hex) => Arc::new(move |a: &str| a.starts_with(&hex)),
+        EndsWith(hex) => Arc::new(move |a: &str| a.ends_with(&hex)),
+        Contains(hex) => Arc::new(move |a: &str| a.contains(&hex)),
+        Regex(regex) => {
+            let re = RegexBuilder::new(&regex).build().unwrap_or_else(|e| {
+                panic!("Invalid regex: {e}");
+            });
             Arc::new(move |a: &str| re.is_match(a))
         }
     };
@@ -101,33 +94,20 @@ fn genkey_attempt(
     }
 }
 
-fn validate_and_normalize_method(method: MatchMethod, case_sensitive: bool) -> MatchMethod {
-    match &method {
-        StartsWith(text) | EndsWith(text) | Contains(text) => {
-            let bech32regex =
-                regex::Regex::new(r"^[qpzry9x8gf2tvdw0s3jn54khce6mua7l]{1,38}$").unwrap();
-            assert!(
-                bech32regex.is_match(&text.to_lowercase()),
-                "\n*** ERROR ***\n\
-                Invalid Bech32 segment format. Please ensure the following:\n\
-                - Only the following characters are allowed: 'qpzry9x8gf2tvdw0s3jn54khce6mua7l'\n\
-                - The segment length must not exceed 39 characters.\n\
-                *************\n"
+fn validate_method(method: MatchMethod) -> MatchMethod {
+    let validate = |text: &str| -> String {
+        let text_lower = text.to_lowercase();
+        let bech32regex = regex::Regex::new(r"^[qpzry9x8gf2tvdw0s3jn54khce6mua7l]*$").unwrap();
+        assert!(
+                bech32regex.is_match(&text_lower),
+                "\n*** ERROR ***\nInvalid characters in search string.\nAllowed: 'qpzry9x8gf2tvdw0s3jn54khce6mua7l'\n*************\n"
             );
-            if case_sensitive {
-                match &method {
-                    StartsWith(_) => StartsWith(format!("{CC_ADDR_PREFIX}{text}")),
-                    _ => method,
-                }
-            } else {
-                match &method {
-                    StartsWith(_) => StartsWith(format!("{CC_ADDR_PREFIX}{text}").to_lowercase()),
-                    EndsWith(_) => EndsWith(text.to_lowercase()),
-                    Contains(_) => Contains(text.to_lowercase()),
-                    Regex(_) => method,
-                }
-            }
-        }
+        text_lower
+    };
+    match method {
+        StartsWith(text) => StartsWith(format!("{}{}", CC_ADDR_PREFIX, validate(&text))),
+        EndsWith(text) => EndsWith(validate(&text)),
+        Contains(text) => Contains(validate(&text)),
         Regex(_) => method,
     }
 }
