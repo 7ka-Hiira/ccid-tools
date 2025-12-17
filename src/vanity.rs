@@ -32,9 +32,7 @@ pub fn lookup(
             let re = RegexBuilder::new(&regex)
                 .unicode(false)
                 .build()
-                .unwrap_or_else(|e| {
-                    panic!("Invalid regex: {e}");
-                });
+                .expect("Invalid regex");
             Arc::new(move |a: &[u8]| re.is_match(a))
         }
     };
@@ -73,9 +71,8 @@ fn worker(
                 if stop_flag.load(Ordering::Relaxed) {
                     return;
                 }
-                let mnemonic = translate_mnemonic(&mnemonic, lang).unwrap_or_else(|e| {
-                    panic!("Failed to translate mnemonic: {e}");
-                });
+                let mnemonic =
+                    translate_mnemonic(&mnemonic, lang).expect("Failed to translate mnemonic");
                 println!("Mnemonic: {mnemonic}\nAddress: {addr}\n");
                 if stop_when_found {
                     stop_flag.store(true, Ordering::Relaxed);
@@ -99,8 +96,7 @@ fn genkey_attempt(
 ) -> Option<(String, String)> {
     let mnemonic: Mnemonic<English> = Mnemonic::new(rng);
     let mut cursor = Cursor::new(&mut buffer[..]);
-    mnemonic_to_addr_fast(&mnemonic, &mut cursor)
-        .expect("Encoding failed: buffer might be too small");
+    mnemonic_to_addr_fast(&mnemonic, &mut cursor);
     if matcher(buffer) {
         Some((
             mnemonic.to_phrase(),

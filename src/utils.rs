@@ -16,6 +16,7 @@ use crate::MnemonicLang;
 const DEFAULT_DERIVATION_PATH: &str = "m/44'/118'/0'/0/0";
 const CC_HRP: Hrp = Hrp::parse_unchecked("con");
 pub const CC_ADDR_PREFIX: &str = "con1";
+pub const CC_SUBKEY_PREFIX: &str = "cck1";
 pub const CC_ADDR_SIZE: usize = 42;
 
 #[inline]
@@ -114,7 +115,9 @@ pub fn privkey_to_address_str(privkey: &str, is_subkey: bool) -> Result<String, 
     let key = SigningKey::from_slice(&hex::decode(privkey)?)?;
     let addr = privkey_to_addr(&key);
     if is_subkey {
-        Ok(addr?.to_string().replacen("con", "cck", 1))
+        Ok(addr?
+            .to_string()
+            .replacen(CC_ADDR_PREFIX, CC_SUBKEY_PREFIX, 1))
     } else {
         Ok(addr?.to_string())
     }
@@ -130,7 +133,9 @@ pub fn privkey_to_pubkey_str(privkey: &str) -> Result<String, Box<dyn Error>> {
 pub fn pubkey_to_address_str(pubkey: &str, is_subkey: bool) -> Result<String, Box<dyn Error>> {
     let addr = pubkey_to_addr(&hex::decode(pubkey)?);
     if is_subkey {
-        Ok(addr?.to_string().replacen("con", "cck", 1))
+        Ok(addr?
+            .to_string()
+            .replacen(CC_ADDR_PREFIX, CC_SUBKEY_PREFIX, 1))
     } else {
         Ok(addr?.to_string())
     }
@@ -149,23 +154,27 @@ pub fn generate_entity(lang: MnemonicLang) -> Result<(String, String, String), B
 pub fn mnemonic_to_addr_fast<W: Wordlist, Address: io::Write>(
     mnemonic: &Mnemonic<W>,
     writer: &mut Address,
-) -> Result<(), Box<dyn Error>> {
-    let privkey = mnemonic.derive_key(DEFAULT_DERIVATION_PATH, None)?;
+) {
+    let privkey = mnemonic
+        .derive_key(DEFAULT_DERIVATION_PATH, None)
+        .expect("failed to generate private key");
     let privkey: &Bip32SigningKey = privkey.as_ref();
     let pubkey = secp256k1::PublicKey::from_slice(
-        SigningKey::from_bytes(&privkey.to_bytes())?
+        SigningKey::from_bytes(&privkey.to_bytes())
+            .expect("failed to generate signing key")
             .verifying_key()
             .as_ref()
             .to_encoded_point(false)
             .as_bytes(),
-    )?
+    )
+    .expect("failed to generate public key")
     .serialize();
     let mut sha256hasher = sha2::Sha256::new();
     sha256hasher.update(pubkey);
     let hash_result = Ripemd160::digest(sha256hasher.finalize());
 
-    bech32::encode_lower_to_writer::<Bech32, _>(writer, CC_HRP, &hash_result)?;
-    Ok(())
+    bech32::encode_lower_to_writer::<Bech32, _>(writer, CC_HRP, &hash_result)
+        .expect("failed to encode and write address");
 }
 
 #[cfg(test)]
@@ -245,7 +254,7 @@ mod tests {
         let mnemonic: Mnemonic<English> = Mnemonic::from_str(MNEMONIC_EN_STR).unwrap();
         let mut address = [0u8; CC_ADDR_SIZE];
         let mut cursor = std::io::Cursor::new(&mut address[..]);
-        mnemonic_to_addr_fast(&mnemonic, &mut cursor).unwrap();
+        mnemonic_to_addr_fast(&mnemonic, &mut cursor);
         assert_eq!(address, ADDRESS.as_bytes());
     }
 }
