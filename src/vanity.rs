@@ -5,7 +5,7 @@ use regex::RegexBuilder;
 use std::sync::atomic::AtomicU64;
 use std::{sync::Arc, thread};
 
-use crate::utils::{mnemonic_to_addr_fast, translate_mnemonic};
+use crate::utils::{mnemonic_to_addr_fast, translate_mnemonic, CC_ADDR_PREFIX};
 use crate::MatchMethod::{self, Contains, EndsWith, Regex, StartsWith};
 
 const PRINT_COUNT: u64 = 50000;
@@ -108,12 +108,12 @@ fn validate_and_normalize_method(method: MatchMethod, case_sensitive: bool) -> M
             );
             if case_sensitive {
                 match &method {
-                    StartsWith(_) => StartsWith(format!("con1{text}")),
+                    StartsWith(_) => StartsWith(format!("{CC_ADDR_PREFIX}{text}")),
                     _ => method,
                 }
             } else {
                 match &method {
-                    StartsWith(_) => StartsWith(format!("con1{text}").to_lowercase()),
+                    StartsWith(_) => StartsWith(format!("{CC_ADDR_PREFIX}{text}").to_lowercase()),
                     EndsWith(_) => EndsWith(text.to_lowercase()),
                     Contains(_) => Contains(text.to_lowercase()),
                     Regex(_) => method,

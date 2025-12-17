@@ -14,6 +14,7 @@ use crate::MnemonicLang;
 
 const DEFAULT_DERIVATION_PATH: &str = "m/44'/118'/0'/0/0";
 const CC_HRP: Hrp = Hrp::parse_unchecked("con");
+pub const CC_ADDR_PREFIX: &str = "con1";
 
 #[inline]
 pub fn translate_mnemonic(
