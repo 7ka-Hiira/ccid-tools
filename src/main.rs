@@ -121,15 +121,15 @@ impl MnemonicLang {
 #[group(required = true, multiple = false)]
 struct MatchMethodStruct {
     /// Find addresses that starts with this string
-    #[clap(short, long, value_name = "HEX")]
+    #[clap(short, long, value_name = "TEXT")]
     starts_with: Option<String>,
 
     /// Find addresses that ends with this string
-    #[clap(short, long, value_name = "HEX")]
+    #[clap(short, long, value_name = "TEXT")]
     ends_with: Option<String>,
 
     /// Find addresses that contains this string
-    #[clap(short, long, value_name = "HEX")]
+    #[clap(short, long, value_name = "TEXT")]
     contains: Option<String>,
 
     /// Find addresses that matches this regex (including 'CC' prefixs)
