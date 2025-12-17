@@ -1,7 +1,7 @@
 use coins_bip39::{wordlist::English, Mnemonic};
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
-use regex::RegexBuilder;
+use regex::bytes::RegexBuilder;
 use std::io::{Cursor, Write};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::{sync::Arc, thread};
@@ -27,14 +27,13 @@ pub fn lookup(
                 .any(|w| w == &match_bytes[..match_length])
         }),
         Regex(regex) => {
-            let re = RegexBuilder::new(&regex).build().unwrap_or_else(|e| {
-                panic!("Invalid regex: {e}");
-            });
-            Arc::new(move |a: &[u8]| {
-                // ascii guaranteed
-                let text = unsafe { String::from_utf8_unchecked(a.to_vec()) };
-                re.is_match(&text)
-            })
+            let re = RegexBuilder::new(&regex)
+                .unicode(false)
+                .build()
+                .unwrap_or_else(|e| {
+                    panic!("Invalid regex: {e}");
+                });
+            Arc::new(move |a: &[u8]| re.is_match(a))
         }
     };
 
